@@ -1,4 +1,4 @@
-# Affine Physics Development Environment
+# Andrew's Formal Forensic Analysis of Bugs in ROS Code
 
 - Fork this repository (won't get submodules)
 - Open VSCode Remote Containers on it (won't populate submodules)
