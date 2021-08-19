@@ -8,5 +8,5 @@
 	path = _target/deps/mathlib
 	url = https://github.com/leanprover-community/mathlib
 [submodule "affine_lib"]
-	path = affine_lib
+	path = math
 	url = https://github.com/kevinsullivan/affine_lib.git
