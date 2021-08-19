@@ -7,6 +7,16 @@ noncomputable theory
 
 -- Kevin: See http://petitjeanmichel.free.fr/itoweb.petitjean.symmetry.html
 
+
+noncomputable def rice440_acs : geom3d_space _ := 
+ let origin := mk_position3d geom3d_std_space 0 0 0 in
+ let basis0 := mk_displacement3d geom3d_std_space 1 0 0 in
+ let basis1 := mk_displacement3d geom3d_std_space 0 1 0 in
+ let basis2 := mk_displacement3d geom3d_std_space 0 0 1 in
+ let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
+  mk_geom3d_space fr
+
+
 /-
 We need to assume a physical interpretation of the data
 representing our coordinate system on geom3d. See geom3d_std.lean
@@ -80,8 +90,6 @@ def camera_imu_acs : geom3d_space _ :=
  let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
   mk_geom3d_space fr
 -- https://www.intelrealsense.com/how-to-getting-imu-data-from-d435i-and-t265/#Tracking_Sensor_Origin_and_CS
-
-
 
 /-
 
