@@ -20,7 +20,7 @@ an abstract coordinatization but also a description of
 a real place, along with orientation."
 -/
 
-def app_geographic_origin := mk_position3d geom3d_std_space 0 0 0
+def app_geographic_origin {f : geom3d_frame} (s : geom3d_space f) (d : string) ( o:bool ): real_scalar → real_scalar → real_scalar → position3d s:= mk_position3d geom3d_std_space 0 0 0
 /-
 We define a standard, globally-available standard
 Euclidean coordinate space on an unstructured real
