@@ -29,6 +29,5 @@ http://www.cs.cornell.edu/courses/cs4620/2008fa/asgn/ray1/fcg3-sec245-248.pdf
 
 
 (3) ACS is given by [Origin, b0, b1, b2]
-
 -/
 
