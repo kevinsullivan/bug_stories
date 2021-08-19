@@ -12,7 +12,7 @@ We need to assume a physical interpretation of the data
 representing our coordinate system on geom3d. See geom3d_std.lean
 for more details on the coordinate system and physical interpretation.
 -/
-def geometry3d_acs : geom3d_space _ := rice420_acs
+def geometry3d_acs : geom3d_space _ := rice440_acs
 
 
 /-
