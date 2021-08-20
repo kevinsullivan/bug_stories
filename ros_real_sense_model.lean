@@ -30,7 +30,8 @@ the real world; and an orientation, isRight
 
 /-
 Associates a real-world location with the origin of the
-standard 3d space you're given by the library.
+standard 3d space you're given by the library. Really 
+a no-op at this point, but gets idea down on paper.
 -/
 def mk_geographic_origin    -- point
   {f : geom3d_frame}        -- inferred from acs
