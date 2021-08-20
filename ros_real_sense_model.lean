@@ -29,28 +29,29 @@ the real world; and an orientation, isRight
 -/
 
 /-
-Associates a real-world location with the origin of the
-standard 3d space you're given by the library. Really 
-a no-op at this point, but gets idea down on paper.
+Associate a real-world location with the origin of the
+standard Euclidean 3d space you're given by the library. 
+Really a no-op at this point, but gets idea down on paper.
 -/
 def mk_geographic_origin    -- point
   {f : geom3d_frame}        -- inferred from acs
   (acs : geom3d_space f)    -- affine coordinate system on geometry
   (interp : string)         -- external meaning of zero point origin
-  : position3d _ 
-  := mk_position3d acs 0 0 0  -- currently forgets interp
+  : position3d _ × string
+  := (mk_position3d acs 0 0 0, interp)  -- currently forgets interp
 
--- example
+/-
+Client application: Let the origin of our world be 
+the back lower left corner looking in from the door.
+-/
 def rice440 := 
-  mk_geographic_origin
-  geom3d_std_space
+  mk_geographic_origin geom3d_std_space
   "back lower left corner, as viewed coming in through the door, of Rice 440"
 
 
 /-
-We define a standard, globally-available standard
-Euclidean coordinate space on an unstructured real
-affine 3-space, representing real geometric 3-space.
+We're given an uninterpreted real Euclidean coordinate 
+space, representing real geometric 3-space.
 
 Note: There's no canonical choice for a frame on 
 real, physical, Euclidean 3-space. Pick any physical
