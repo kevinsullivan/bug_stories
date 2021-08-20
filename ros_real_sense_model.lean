@@ -5,7 +5,9 @@ import .std.geom3d_std
 
 noncomputable theory
 
-def milliseconds := (0.001)  -- SHOULD THIS BE MOVED TO STANDARDS? WHAT SHOULD IT LOOK LIKE?
+-- TODO: Should come from some library
+def milliseconds := (0.001)           -- names not clear, inverted?
+def milliseconds_to_seconds := 1000   -- names not clear, inverted?
 
 -- TODO: Should come from resp. std libraries and be distributed to them accordingly
 namespace std
@@ -111,7 +113,7 @@ end camera
 namespace camera_system_time
 axioms (δ₁ ε₁ : scalar)       -- errors in clock offset and scaling respectively
 def origin := utc.time δ₁     -- zero point locally corresponds to δ₁ error offset from real UTC origin
-def basis := mk_duration utc.coords (milliseconds*ε₁) -- unit vector scaling error ε₁ 
+def basis := mk_duration utc.coords (milliseconds*ε₁) -- FIX? unit vector scaling error ε₁ 
 def frame := mk_time_frame origin basis
 def coords := mk_time_space frame
 def time (t : K) := mk_time coords x 
@@ -136,13 +138,16 @@ just above, with units in seconds rather than milliseconds.
       - The dilation factor is unchanged from the parent ACS
 (3) ACS is given by [Origin, b0]
 -/
-def milliseconds_to_seconds := 1000 
-def orig := mk_time camera_system_time_coordinates 0 
-def base := mk_duration camera_system_time_coordinates milliseconds_to_seconds
+namespace camera_system_time_seconds
+def orig := mk_time camera_system_time.coords 0 
+def base := mk_duration camera_system_time.coords milliseconds_to_seconds -- check
 def frame := mk_time_frame orig base
-def camera_system_time_seconds : time_space _ := 
-  mk_time_space frame
+def coords : time_space _ := mk_time_space frame
+def time (t : K) := mk_time coords x 
+def duration (d : K) := mk_duration coords d 
 -- interpretations for all
+end camera_system_time_seconds
+
 
 /-
 Next we construct the "hardware time" of the RealSense Camera
@@ -166,11 +171,16 @@ share the same rate of error.
 
 -/
 
-def camera_hardware_time_acs : time_space _ := 
-  let milliseconds := (0.001) in -- SHOULD THIS BE MOVED TO STANDARDS? WHAT SHOULD IT LOOK LIKE?
-  let origin := mk_time utc_coord_in_seconds 0 in
-  let basis := mk_duration utc_coord_in_seconds (milliseconds*ε₁) in 
-  mk_time_space (mk_time_frame origin basis)
+namespace camera_hardware_time
+axioms (δ₁ ε₁ : scalar) -- clock offset and scaling error factors; not used here (TODO)
+def origin := mk_time utc.coords 0 
+def basis := mk_duration utc.coords (milliseconds*ε₁)  
+def frame := mk_time_frame origin basis
+def coords : time_space _ := mk_time_space frame
+def time (t : K) := mk_time coords t
+def duration (d: K) := mk_duration coords d
+end  camera_hardware_time
+
 /-
 
 Similar to the definition of camera_system_time_acs, we define camera_hardware_time_seconds, reflecting the
@@ -186,7 +196,6 @@ need to convert from camera_hardware_time_acs (in milliseconds) to an ACS expres
 (3) ACS is given by [Origin, b0]
 -/
 def camera_hardware_time_seconds : time_space _ := 
-  let milliseconds_to_seconds := 1000 in --MOVE TO STANDARDS? DEFINE WHAT UNITS ARE SOMEWHERE ELSE?
   let origin := mk_time camera_hardware_time_acs 0 in
   let basis := mk_duration camera_hardware_time_acs milliseconds_to_seconds in
   mk_time_space (mk_time_frame origin basis)
