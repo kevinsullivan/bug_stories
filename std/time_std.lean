@@ -1,10 +1,6 @@
 import ..phys.time.time
 
-/-
-Units are in seconds. Seconds are the smallest non-variable unit in UTC.
--/
+-- Rest moved into main ros_real_sense file for now
 
-noncomputable def coordinated_universal_time_in_seconds : time_space _ := 
-  let origin := mk_time time_std_space (1970*365*24*60*60) in
-  let basis := mk_duration time_std_space 1 in 
-  mk_space (mk_time_frame origin basis)
+-- This manifest constant was origin for utc, but does it make sense?
+def x := (1970*365*24*60*60)

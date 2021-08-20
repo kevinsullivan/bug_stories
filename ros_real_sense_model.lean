@@ -5,160 +5,65 @@ import .std.geom3d_std
 
 noncomputable theory
 
--- Kevin: See http://petitjeanmichel.free.fr/itoweb.petitjean.symmetry.html
-
 /-
-Rule of thumb: Don't use std_space, std_frame in
-application code. Define your own new world_space,
-world_frame, etc. TODO: Enforce encapsulation.
+GEOMETRY
 -/
 
-/-
-What I really want to say here is not "make an abstract
-position" but "model a real-world location, with both 
-an abstract coordinatization but also a description of
-a real place, along with orientation."
--/
+def std_location (x y z : K) : position3d geom3d_std_space := mk_position3d _ x y z
+def std_displacement (x y z : K) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
 
-/-
-Add a natural language interp
-string explaining what the formal term represents in 
-the real world; and an orientation, isRight 
-| true := right 
-| false := left 
--/
-
-/-
-Associate a real-world location with the origin of the
-standard Euclidean 3d space you're given by the library. 
-Really a no-op at this point, but gets idea down on paper.
-Formalize as an effect? Not if we want static checking.
--/
-
-
--- interp: coming in the Less Lab door, the back left lower corner of the room
-def world_origin : position3d geom3d_std_space := mk_position3d _ 0 0 0
-
-
-/-
-  interp:
-  - points right/east along the wall
-  - unit length is 1m 
-  - right handed 
--/
-def world_basis_0 : displacement3d geom3d_std_space := mk_displacement3d _ 1 0 0
-
-
-/-
-  - points to the door along the west wall, 
-  - unit length is 1m
-  - right handed
--/
-def world_basis_1 : displacement3d geom3d_std_space := mk_displacement3d _ 0 1 0
-
-
-/-
-  - points up along the NW corner of the room, 
-  - unit length is one meter, 
-  - right handed
--/
-def world_basis_2 : displacement3d geom3d_std_space := mk_displacement3d _ 0 0 1
-
-
-/-
-Construct a frame with this origin and these basis vectors.
-TODO: Explicitly back vectors up into a basis? We don't (yet?).
--/
+def world_origin := std_location 0 0 0      -- looking in from doorway, the back lower left corner  
+def world_basis_0 := std_displacement 1 0 0 -- right/east along wall; unit is 1m; right 
+def world_basis_1 := std_displacement 0 1 0 -- to door along weset wall; 1m; right 
+def world_basis_2 := std_displacement 0 0 1 -- up along NW corner; 1m; right handed
 def world_frame := mk_geom3d_frame world_origin world_basis_0 world_basis_1 world_basis_2
+def world_coordinates := mk_geom3d_space world_frame
+-- comments are data should are being overlaid on std_ stuff; need to reify with typecheckability
+def world_location (x y z : K) : position3d world_coordinates := mk_position3d _ x y z
+def world_displacement (x y z : K) : displacement3d world_coordinates := mk_displacement3d _ x y z
 
 /-
-Note that frame doesn't (can't?) incorporate the missing information, and
-it certainly isn't getting into this frame currently by anything like a direct
-product/sum of our semantically decorated basis vectors, here.
+TIME
 -/
 
-def world_acs := mk_geom3d_space world_frame
+def std_time_point (p : K) : time time_std_space := mk_time time_std_space p
+def std_duration (d : K) : duration time_std_space := mk_duration _ d
+
+def utc_origin := std_time_point 0  -- first instant of January 1, 1970
+def utc_basis := std_duration 1 -- second is smallest non-variable unit in UTC
+def utc_frame := mk_time_frame utc_origin utc_basis
+def utc_coordinates_seconds := mk_space utc_frame
+def utc_time (p : K) := mk_time utc_coordinates_seconds p
+def utc_duration (d : K) := mk_duration utc_coordinates_seconds d
 
 /-
-You now have an affine coordinate space coincident with the standard space, but
-with type differences to prevent inadvertent mixing of expressions between this
-world space and the underlying std space. KEVIN: Reconfirm.
--/
-
-
-/-
-We need a foundational physical interpretation of the data
-representing our coordinate system on time. We derive a new ACS from 
-"coordinated_universal_time_in_seconds" - see time_std.lean 
-for a more details on the coordinate system and physical interpretation
-(note : this is a conventional UTC ACS expressed with units in seconds)
-
-The gist of this interpretation of our "world time" is that we have formalized
-some fixed time at which our application is run, expressed in terms of UTC. 
-To do so, we have simply translated the UTC origin to the time at which this was written,
-August 18th at ~240 PM. Note: any arbitrary time does not hold any impact on our formal model
-(although presumably if we set the origin to the stone age, 
-  there should not be a robotics camera running there).
-We do not change the basis - which is a standard 
-basis whose unit vectors are expressed in seconds.
-
-
-(1) ORIGIN: We move the origin up to 1629311979
-
-(2) BASIS VECTORS
-    basis0 
-      - points to the future
-      - unit length is 1 second (as in UTC)
-      - Presumably no dilation occur, since this is supposed to represent "empirical"
-        (atomically-sampled-and-average-weighted) time
-(3) ACS is given by [Origin, b0]
--/
-
 def August18thTwoFortyPMTimestamp : scalar := 1629311979
-
 def current_time_in_UTC : time_space _ := 
-  let origin := mk_time coordinated_universal_time_in_seconds 1629311979 in
-  let basis := mk_duration coordinated_universal_time_in_seconds 1 in
+  let origin := mk_time utc_coordinates_seconds 1629311979 in
+  let basis := mk_duration utc_coordinates_seconds 1 in
   mk_time_space (mk_time_frame origin basis)
-
-
-/-
-We're assuming a RealSense D435I hardware
-unit. It comes with a defined coordinate
-system.
-We derive from the Rice Hall 420 standard,
-aliased in this file as "world_geom_acs".
-We'll assume that the camera_imu is two
-meters to the right along the back wall,
-one meter out from the wall and one meter
-high. We'll inhert the standard vector 
-space structure from the world_geom_acs.
-
-That's its position in space. As for its
-orientation, we'll use the orientation provided
-by realsense documentation. In ROS orientation notation,
-we might call that 'EDN'
-
-1. The positive x-axis points to the subject.
-2. The positive y-axis points down.
-3. The positive z-axis points forward
 -/
-def camera_imu_acs : geom3d_space _ := 
- let origin := mk_position3d world_acs 2 1 1 in
- let basis0 := mk_displacement3d world_acs 1 0 0 in
- let basis1 := mk_displacement3d world_acs 0 0 (-1) in
- let basis2 := mk_displacement3d world_acs 0 1 0 in
- let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
-  mk_geom3d_space fr
--- https://www.intelrealsense.com/how-to-getting-imu-data-from-d435i-and-t265/#Tracking_Sensor_Origin_and_CS
+def Aug18Two40PM := utc_time 1629311979
 
 /-
+HARDWARE
+-/
 
+def camera_position := world_location 2 1 1
+def camera_basis_0 := world_displacement 3 0 0
+def camera_basis_1 := world_displacement 0 0 (-1)
+def camera_basis_2 := world_displacement 0 2 0
+def camera_frame := mk_geom3d_frame camera_position camera_basis_0 camera_basis_1 camera_basis_2
+def camera_coordinates : geom3d_space _ := mk_geom3d_space camera_frame
+
+/-
 We provide an intepretation for the camera's OS clock,
 referred to as "System Time" in RealSense nomenclature. 
-We are presumably running our application at some "recent" time,
-expressed in terms of UTC, so we inherit from the ACS "current_time_in_UTC",
-our global intepretation of "world time" - when the "application" is running, in terms of UTC.
+We are presumably running our application at some "recent"
+  time, expressed in terms of UTC, so we inherit from the 
+ACS "current_time_in_UTC", our global intepretation of 
+"world time" - when the "application" is running, in 
+terms of UTC.
 
 This is effectively the camera OS's interpretation of 
 what it believes the current UTC time is. 
@@ -186,14 +91,17 @@ which reflects the current drift of the clock's origin
 (3) ACS is given by [Origin, b0]
 -/
 
-axiom δ₁ : scalar
-axiom ε₁ : scalar
+def milliseconds := (0.001)  -- SHOULD THIS BE MOVED TO STANDARDS? WHAT SHOULD IT LOOK LIKE?
 
-def camera_system_time_acs : time_space _ := 
-  let milliseconds := (0.001) in -- SHOULD THIS BE MOVED TO STANDARDS? WHAT SHOULD IT LOOK LIKE?
-  let origin := mk_time current_time_in_UTC δ₁ in
-  let basis := mk_duration current_time_in_UTC (milliseconds*ε₁) in 
-  mk_time_space (mk_time_frame origin basis)
+axiom δ₁ : scalar -- one-time zero time offset from official (clock wasn't set correctly)
+axiom ε₁ : scalar -- time unit length offset from official (clock runs fast or slow)
+def origin := utc_time δ₁ 
+def timeunit := mk_duration utc_coordinates_seconds (milliseconds*ε₁)
+def timeframe := mk_time_frame origin timeunit
+def camera_system_time_coordinates := mk_time_space timeframe
+
+
+-- STOPPED HERE
 
 /-
 
@@ -240,8 +148,8 @@ share the same rate of error.
 
 def camera_hardware_time_acs : time_space _ := 
   let milliseconds := (0.001) in -- SHOULD THIS BE MOVED TO STANDARDS? WHAT SHOULD IT LOOK LIKE?
-  let origin := mk_time coordinated_universal_time_in_seconds 0 in
-  let basis := mk_duration coordinated_universal_time_in_seconds (milliseconds*ε₁) in 
+  let origin := mk_time utc_coord_in_seconds 0 in
+  let basis := mk_duration utc_coord_in_seconds (milliseconds*ε₁) in 
   mk_time_space (mk_time_frame origin basis)
 /-
 
@@ -295,8 +203,8 @@ axiom ε₂ : scalar
 
 def platform_time_in_seconds := 
   let seconds := 1 in
-  let origin := mk_time coordinated_universal_time_in_seconds δ₂ in
-  let basis := mk_duration coordinated_universal_time_in_seconds (seconds*ε₂) in 
+  let origin := mk_time utc_coord_in_seconds δ₂ in
+  let basis := mk_duration utc_coord_in_seconds (seconds*ε₂) in 
   mk_time_space (mk_time_frame origin basis)
 
 /-
