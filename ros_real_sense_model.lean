@@ -32,99 +32,62 @@ the real world; and an orientation, isRight
 Associate a real-world location with the origin of the
 standard Euclidean 3d space you're given by the library. 
 Really a no-op at this point, but gets idea down on paper.
--/
-def mk_geographic_origin    -- point
-  {f : geom3d_frame}        -- inferred from acs
-  (acs : geom3d_space f)    -- affine coordinate system on geometry
-  (interp : string)         -- external meaning of zero point origin
-  : position3d _ × string
-  := (mk_position3d acs 0 0 0, interp)  -- currently forgets interp
-
-/-
-Client application: Let the origin of our world be 
-the back lower left corner looking in from the door.
--/
-def rice440 := 
-  mk_geographic_origin geom3d_std_space
-  "back lower left corner, as viewed coming in through the door, of Rice 440"
-
-
-/-
-We're given an uninterpreted real Euclidean coordinate 
-space, representing real geometric 3-space.
-
-Note: There's no canonical choice for a frame on 
-real, physical, Euclidean 3-space. Pick any physical
-interpretation you want of the origin and axes of the
-new frame. Then build all other geometry relative to 
-that.
-
-
-  - origin: 
-    - internal: abstract zero point (built in)
-    - external: concrete real place (you provide)
-  - frame (looking from door):
-    - 0 : vector
-      - direction: right along the back wall
-      - : unit: meter
-    - 1 : vector
-      - direction: from back left corner towards the door
-      - unit: meter
-    - 2 : vector 
-      - direction: up back left corner
-      - unit: meter
-
-
-In this case, we suppose that the world is a point and orientation in
-Rice Hall, described below, from which a user can derive other coordinate spaces relative to this.
-
-(1) ORIGIN: the world_geom_acs.origin represents the 
-northwest-ish (back right) lower corner of the Rice Hall
-Less Lab
-
-(2) BASIS VECTORS
-    basis0 
-      - points right/east along the wall
-      - unit length is 1m 
-      - right handed chirality
-    basis1 
-      - points to the door along the west wall, 
-      - unit length is 1m
-      - RHC
-    basis2 
-      - points up along the NW corner of the room, 
-      - unit length is one meter, 
-      - RHC
-
-Some notes on Chirality/"Handedness":
-https://en.wikipedia.org/wiki/Orientation_(vector_space)
-http://www.cs.cornell.edu/courses/cs4620/2008fa/asgn/ray1/fcg3-sec245-248.pdf
-
-
-(3) ACS is given by [Origin, b0, b1, b2]
+Formalize as an effect? Not if we want static checking.
 -/
 
 
-
-noncomputable def rice440_acs : geom3d_space _ := 
- let origin := mk_position3d geom3d_std_space 0 0 0 in
- let basis0 := mk_displacement3d geom3d_std_space 1 0 0 in
- let basis1 := mk_displacement3d geom3d_std_space 0 1 0 in
- let basis2 := mk_displacement3d geom3d_std_space 0 0 1 in
- let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
-  mk_geom3d_space fr
+-- interp: coming in the Less Lab door, the back left lower corner of the room
+def world_origin : position3d geom3d_std_space := mk_position3d _ 0 0 0
 
 
 /-
-We need to assume a physical interpretation of the data
-representing our coordinate system on geom3d. See geom3d_std.lean
-for more details on the coordinate system and physical interpretation.
+  interp:
+  - points right/east along the wall
+  - unit length is 1m 
+  - right handed 
 -/
-def geometry3d_acs : geom3d_space _ := rice440_acs
+def world_basis_0 : displacement3d geom3d_std_space := mk_displacement3d _ 1 0 0
 
 
 /-
-We need to assume a physical interpretation of the data
+  - points to the door along the west wall, 
+  - unit length is 1m
+  - right handed
+-/
+def world_basis_1 : displacement3d geom3d_std_space := mk_displacement3d _ 0 1 0
+
+
+/-
+  - points up along the NW corner of the room, 
+  - unit length is one meter, 
+  - right handed
+-/
+def world_basis_2 : displacement3d geom3d_std_space := mk_displacement3d _ 0 0 1
+
+
+/-
+Construct a frame with this origin and these basis vectors.
+TODO: Explicitly back vectors up into a basis? We don't (yet?).
+-/
+def world_frame := mk_geom3d_frame world_origin world_basis_0 world_basis_1 world_basis_2
+
+/-
+Note that frame doesn't (can't?) incorporate the missing information, and
+it certainly isn't getting into this frame currently by anything like a direct
+product/sum of our semantically decorated basis vectors, here.
+-/
+
+def world_acs := mk_geom3d_space world_frame
+
+/-
+You now have an affine coordinate space coincident with the standard space, but
+with type differences to prevent inadvertent mixing of expressions between this
+world space and the underlying std space. KEVIN: Reconfirm.
+-/
+
+
+/-
+We need a foundational physical interpretation of the data
 representing our coordinate system on time. We derive a new ACS from 
 "coordinated_universal_time_in_seconds" - see time_std.lean 
 for a more details on the coordinate system and physical interpretation
@@ -181,10 +144,10 @@ we might call that 'EDN'
 3. The positive z-axis points forward
 -/
 def camera_imu_acs : geom3d_space _ := 
- let origin := mk_position3d geometry3d_acs 2 1 1 in
- let basis0 := mk_displacement3d geometry3d_acs 1 0 0 in
- let basis1 := mk_displacement3d geometry3d_acs 0 0 (-1) in
- let basis2 := mk_displacement3d geometry3d_acs 0 1 0 in
+ let origin := mk_position3d world_acs 2 1 1 in
+ let basis0 := mk_displacement3d world_acs 1 0 0 in
+ let basis1 := mk_displacement3d world_acs 0 0 (-1) in
+ let basis2 := mk_displacement3d world_acs 0 1 0 in
  let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
   mk_geom3d_space fr
 -- https://www.intelrealsense.com/how-to-getting-imu-data-from-d435i-and-t265/#Tracking_Sensor_Origin_and_CS
