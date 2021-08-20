@@ -25,3 +25,22 @@ all this extra structure to what is otherwise just abstract affine algebra.
 
 -- https://www.intelrealsense.com/how-to-getting-imu-data-from-d435i-and-t265/#Tracking_Sensor_Origin_and_CS
 
+/-
+We *defer* addition of physical environment bindings to the next 
+layer of our modeling stack. As usual, we'll extend the algebraic
+objects the next level down and mechanically reprove the affine 
+and related theorems. One will then be able to write expressions
+statically typechecked for *additional* mismatches on orientation,
+environmental interpetation (e.g., which way do the basis vectors
+in this coordinate space point in an assumed environment), and on
+whatever else makes sense. 
+-/
+
+====
+
+/-
+We incur a design rule: "standard" time" for this app is "UTC in seconds" 
+-/
+
+
+

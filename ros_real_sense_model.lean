@@ -5,56 +5,49 @@ import .std.geom3d_std
 
 noncomputable theory
 
-/-
-GEOMETRY
--/
+def milliseconds := (0.001)  -- SHOULD THIS BE MOVED TO STANDARDS? WHAT SHOULD IT LOOK LIKE?
 
-def std_location (x y z : K) : position3d geom3d_std_space := mk_position3d _ x y z
-def std_displacement (x y z : K) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
+-- TODO: Should come from resp. std libraries and be distributed to them accordingly
+namespace std
+def time (p : K) : time time_std_space := mk_time time_std_space p
+def duration (d : K) : duration time_std_space := mk_duration _ d
+def position (x y z : K) : position3d geom3d_std_space := mk_position3d _ x y z
+def displacement (x y z : K) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
+end std
 
-def world_origin := std_location 0 0 0      -- looking in from doorway, the back lower left corner  
-def world_basis_0 := std_displacement 1 0 0 -- right/east along wall; unit is 1m; right 
-def world_basis_1 := std_displacement 0 1 0 -- to door along weset wall; 1m; right 
-def world_basis_2 := std_displacement 0 0 1 -- up along NW corner; 1m; right handed
-def world_frame := mk_geom3d_frame world_origin world_basis_0 world_basis_1 world_basis_2
-def world_coordinates := mk_geom3d_space world_frame
--- comments are data should are being overlaid on std_ stuff; need to reify with typecheckability
-def world_location (x y z : K) : position3d world_coordinates := mk_position3d _ x y z
-def world_displacement (x y z : K) : displacement3d world_coordinates := mk_displacement3d _ x y z
+-- Geometric world
+namespace world  -- it's generic/parametric: for example, world -> Rice 440, as follows  
+def origin := std.position 0 0 0      -- looking in from doorway, the back lower left corner  
+def basis_0 := std.displacement 1 0 0 -- right/east along wall; unit is 1m; right 
+def basis_1 := std.displacement 0 1 0 -- to door along weset wall; 1m; right 
+def basis_2 := std.displacement 0 0 1 -- up along NW corner; 1m; right handed
+def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
+def coords := mk_geom3d_space frame
+def position (x y z : K) := mk_position3d coords x y z
+def displacement (x y z : K) := mk_displacement3d coords x y z
+end world
 
-/-
-TIME
--/
+-- Camera in world
+namespace camera
+def origin := world.position 2 1 1
+def basis_0 := world.displacement 3 0 0
+def basis_1 := world.displacement 0 0 (-1)
+def basis_2 := world.displacement 0 2 0
+def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
+def coords : geom3d_space _ := mk_geom3d_space frame
+def position (x y z : K) := mk_position3d coords x y z
+def displacement (x y z : K) := mk_displacement3d coords x y z
+end camera
 
-def std_time_point (p : K) : time time_std_space := mk_time time_std_space p
-def std_duration (d : K) : duration time_std_space := mk_duration _ d
+namespace utc
+def origin := std.time 0   -- origin; first instant of January 1, 1970
+def basis := std.duration 1    -- basis; "second;" the smallest non-variable unit in UTC
+def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
+def coords := mk_space frame  -- "cosys"?
+def time (t : K) := mk_time coords t
+def duration (d : K) := mk_duration coords d
+end utc
 
-def utc_origin := std_time_point 0  -- first instant of January 1, 1970
-def utc_basis := std_duration 1 -- second is smallest non-variable unit in UTC
-def utc_frame := mk_time_frame utc_origin utc_basis
-def utc_coordinates_seconds := mk_space utc_frame
-def utc_time (p : K) := mk_time utc_coordinates_seconds p
-def utc_duration (d : K) := mk_duration utc_coordinates_seconds d
-
-/-
-def August18thTwoFortyPMTimestamp : scalar := 1629311979
-def current_time_in_UTC : time_space _ := 
-  let origin := mk_time utc_coordinates_seconds 1629311979 in
-  let basis := mk_duration utc_coordinates_seconds 1 in
-  mk_time_space (mk_time_frame origin basis)
--/
-def Aug18Two40PM := utc_time 1629311979
-
-/-
-HARDWARE
--/
-
-def camera_position := world_location 2 1 1
-def camera_basis_0 := world_displacement 3 0 0
-def camera_basis_1 := world_displacement 0 0 (-1)
-def camera_basis_2 := world_displacement 0 2 0
-def camera_frame := mk_geom3d_frame camera_position camera_basis_0 camera_basis_1 camera_basis_2
-def camera_coordinates : geom3d_space _ := mk_geom3d_space camera_frame
 
 /-
 We provide an intepretation for the camera's OS clock,
@@ -91,14 +84,39 @@ which reflects the current drift of the clock's origin
 (3) ACS is given by [Origin, b0]
 -/
 
-def milliseconds := (0.001)  -- SHOULD THIS BE MOVED TO STANDARDS? WHAT SHOULD IT LOOK LIKE?
+/-
+namespace utc
+def origin := std.time 0   -- origin; first instant of January 1, 1970
+def basis := std.duration 1    -- basis; "second;" the smallest non-variable unit in UTC
+def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
+def coords := mk_space frame  -- "cosys"?
+def time (t : K) := mk_time coords t
+def duration (d : K) := mk_duration coords d
+end utc
+-/
 
-axiom δ₁ : scalar -- one-time zero time offset from official (clock wasn't set correctly)
-axiom ε₁ : scalar -- time unit length offset from official (clock runs fast or slow)
-def origin := utc_time δ₁ 
-def timeunit := mk_duration utc_coordinates_seconds (milliseconds*ε₁)
-def timeframe := mk_time_frame origin timeunit
-def camera_system_time_coordinates := mk_time_space timeframe
+/-
+namespace camera
+def origin := world.position 2 1 1
+def basis_0 := world.displacement 3 0 0
+def basis_1 := world.displacement 0 0 (-1)
+def basis_2 := world.displacement 0 2 0
+def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
+def coords : geom3d_space _ := mk_geom3d_space frame
+def position (x y z : K) := mk_position3d coords x y z
+def displacement (x y z : K) := mk_displacement3d coords x y z
+end camera
+-/
+
+namespace camera_system_time
+axioms (δ₁ ε₁ : scalar)       -- errors in clock offset and scaling respectively
+def origin := utc.time δ₁     -- zero point locally corresponds to δ₁ error offset from real UTC origin
+def basis := mk_duration utc.coords (milliseconds*ε₁) -- unit vector scaling error ε₁ 
+def frame := mk_time_frame origin basis
+def coords := mk_time_space frame
+def time (t : K) := mk_time coords x 
+def duration (d : K) := mk_duration coords d 
+end camera_system_time
 
 
 -- STOPPED HERE
@@ -106,8 +124,8 @@ def camera_system_time_coordinates := mk_time_space timeframe
 /-
 
 As we must convert from milliseconds (as retrieved through the rs2::Frame API) to seconds,
-we express a new ACS which simply conveys the camera_system_time_acs, defined and described just above,
-with units in seconds rather than milliseconds.
+we express a new ACS which simply conveys the camera_system_time_acs, defined and described 
+just above, with units in seconds rather than milliseconds.
 
 (1) ORIGIN: The origin is unchanged from camera_system_time_acs
 
@@ -118,11 +136,13 @@ with units in seconds rather than milliseconds.
       - The dilation factor is unchanged from the parent ACS
 (3) ACS is given by [Origin, b0]
 -/
+def milliseconds_to_seconds := 1000 
+def orig := mk_time camera_system_time_coordinates 0 
+def base := mk_duration camera_system_time_coordinates milliseconds_to_seconds
+def frame := mk_time_frame orig base
 def camera_system_time_seconds : time_space _ := 
-  let milliseconds_to_seconds := 1000 in --MOVE TO STANDARDS? DEFINE WHAT UNITS ARE SOMEWHERE ELSE?
-  let origin := mk_time camera_system_time_acs 0 in
-  let basis := mk_duration camera_system_time_acs milliseconds_to_seconds in
-  mk_time_space (mk_time_frame origin basis)
+  mk_time_space frame
+-- interpretations for all
 
 /-
 Next we construct the "hardware time" of the RealSense Camera
