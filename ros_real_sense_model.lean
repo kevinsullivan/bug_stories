@@ -14,13 +14,38 @@ world_frame, etc. TODO: Enforce encapsulation.
 -/
 
 /-
-What I really want to say here is no "make an abstract
+What I really want to say here is not "make an abstract
 position" but "model a real-world location, with both 
 an abstract coordinatization but also a description of
 a real place, along with orientation."
 -/
 
-def app_geographic_origin {f : geom3d_frame} (s : geom3d_space f) (d : string) ( o:bool ): real_scalar → real_scalar → real_scalar → position3d s:= mk_position3d geom3d_std_space 0 0 0
+/-
+Add a natural language interp
+string explaining what the formal term represents in 
+the real world; and an orientation, isRight 
+| true := right 
+| false := left 
+-/
+
+/-
+Associates a real-world location with the origin of the
+standard 3d space you're given by the library.
+-/
+def mk_geographic_origin    -- point
+  {f : geom3d_frame}        -- inferred from acs
+  (acs : geom3d_space f)    -- affine coordinate system on geometry
+  (interp : string)         -- external meaning of zero point origin
+  : position3d _ 
+  := mk_position3d acs 0 0 0  -- currently forgets interp
+
+-- example
+def rice440 := 
+  mk_geographic_origin
+  geom3d_std_space
+  "back lower left corner, as viewed coming in through the door, of Rice 440"
+
+
 /-
 We define a standard, globally-available standard
 Euclidean coordinate space on an unstructured real
