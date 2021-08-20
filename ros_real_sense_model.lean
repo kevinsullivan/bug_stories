@@ -181,6 +181,9 @@ def time (t : K) := mk_time coords t
 def duration (d: K) := mk_duration coords d
 end  camera_hardware_time
 
+
+-- STOPPED HERE
+
 /-
 
 Similar to the definition of camera_system_time_acs, we define camera_hardware_time_seconds, reflecting the
