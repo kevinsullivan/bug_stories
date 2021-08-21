@@ -195,14 +195,6 @@ Where our nice affine space notations? Now's when we need them.
 -/
 
 /-
--- NEED HELP HERE, ANDREW, THANKS, IF YOU HAPPEN BY.  *** BROKEN ***
-namespace camera_hardware_time_seconds  
-  def origin := camera_hardware_time.origin 
-  def basis' := camera_hardware_time.basis 
-  mk_time_space (mk_time_frame origin basis)
-end camera_hardware_time_seconds
--/
-/-
 This is the ROS client (of the RealSense camera) node's system time, an OS approximation
 of the current UTC time expressed in units seconds
 
@@ -228,7 +220,6 @@ which reflects the current drift of the clock's origin
 
 (3) ACS is given by [Origin, b0]
 -/
-
 
 namespace platform_time_in_seconds  
   axiom δ₂ : scalar 
@@ -279,25 +270,42 @@ end camera_global_time
 /-
 CODE FORMALIZATION OVERVIEW
 
-The parameter of the method imu_callback_sync, "frame", is either timestamped Acceleration or Angular Velocity Vector. 
-We have no implementation for either in Peirce (or for sum types for that matter).
+The parameter of the method imu_callback_sync, "frame", is either 
+timestamped Acceleration or Angular Velocity Vector. We have no 
+implementation for either in Peirce (or for sum types for that matter).
 Per discussion on last 8/6, this is replaced with a Displacement3D.
 
-We model two versions of this method, reflecting that different sorts of errors can occur. The gap/limitation that causes us to
-need to construct two versions of this method is that Peirce, as it is currently constructed, annotates a single execution path. 
-Thus, to model two execution paths, we need two versions of formalization. 
+We model two versions of this method, reflecting that different 
+sorts of errors that can occur. The gap/limitation that causes us to
+need to construct two versions of this method is that Peirce, as it 
+is currently constructed, annotates a single execution path. Thus, 
+to model two execution paths, we need two versions of a formalism. 
 
-In the first instance, we presume that we've received "_camera_time_base" in the camera_hardware_time_acs ACS, 
-but that we've just received a dataframe whose timestamp "dataframe.timestamp" domain is expressed in camera_system_time_acs. 
-What transpires is that we will subtract two timestamps - "dataframe.timestamp - _camera_time_base", which will yield a type error.
-In the actual C++ code, this computation will not yield a type error, 
-rather, it will produce an extremely large "change in timestamps" (doubling of the UTC timestamp) which is physically meaningless and can lead to client failures.
-The dilation rates + units of the respective ACS's of the operands are compatibile, in this case, but the origins are obviously off by a dramatic amount.
+In the first instance, we presume that we've received 
+"_camera_time_base" in the camera_hardware_time_acs ACS, 
+but that we've just received a dataframe whose timestamp 
+"dataframe.timestamp" domain is expressed in camera_system_time_acs. 
 
-In the second instance, we presume that we've received "_camera_time_base" in the camera_global_time_acs ACS, 
-but that we've just received a dataframe whose timestamp "dataframe.timestamp" domain is expressed in camera_hardware_time_acs. 
-The only difference from above is that, the error will result in a smaller error - to the tune of a few hundred MS 
-(varying over time, as the dilation rates are not in equal in this case).
+What transpires is that we will subtract two timestamps - 
+"dataframe.timestamp - _camera_time_base", which will yield a 
+type error. In the actual C++ code, this computation will not 
+yield a type error,  rather, it will produce an extremely large 
+"change in timestamps" (doubling of the UTC timestamp) which 
+is physically meaningless and can lead to client failures.
+The dilation rates + units of the respective ACS's of the 
+operands are compatibile, in this case, but the origins are 
+obviously off by dramatic amounts.
+
+In the second instance, we presume that we've received 
+"_camera_time_base" in the camera_global_time_acs ACS, 
+but that we've just received a dataframe whose timestamp 
+"dataframe.timestamp" domain is in camera_hardware_time_acs. 
+The only difference from above is that, the error will 
+result in a smaller error - to the tune of a few hundred 
+MS  (varying over time, as the dilation rates are not in
+equal in this case).
+
+-- I AM NOW DOWN TO HERE. --KEVIN
 
 There are several other others that manifest in either treatment. One is that we annotate a variable suffixed "_ms"
   with a frame expressed in "milliseconds" units, whereas its actual computation is very clearly expressed in seconds. 
@@ -319,7 +327,7 @@ Lastly, when adding a coordinate from a time expressed in our platform time WITH
 
 void BaseRealSenseNode::imu_callback_sync(rs2::frame dataframe, imu_sync_method sync_method)
 -/
-def imu_callback_sync_v1 : timestamped camera_system_time_acs (displacement3d camera_imu_acs) → punit := 
+def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d camera_imu_acs) → punit := 
   /-
   We define the argument to the method, dataframe. It has an interpretation of 
     timestamped camera_time_acs (displacement3d camera_imu_acs)
