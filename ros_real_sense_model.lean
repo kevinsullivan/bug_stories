@@ -201,7 +201,7 @@ need to convert from camera_hardware_time_acs (in milliseconds) to an ACS expres
 Where our nice affine space notations? Now's when we need them.
 -/
 
--- NEED HELP HERE, ANDREW, THANKS, IF YOU HAPPEN BY.
+-- NEED HELP HERE, ANDREW, THANKS, IF YOU HAPPEN BY.  *** BROKEN ***
 namespace camera_hardware_time_seconds  
   def origin := camera_hardware_time.origin 
   def basis' := camera_hardware_time.basis 
