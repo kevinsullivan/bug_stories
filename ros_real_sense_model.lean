@@ -196,6 +196,12 @@ need to convert from camera_hardware_time_acs (in milliseconds) to an ACS expres
       - The dilation factor is unchanged from the parent ACS
 (3) ACS is given by [Origin, b0]
 -/
+
+/-
+Where our nice affine space notations? Now's when we need them.
+-/
+
+-- NEED HELP HERE, ANDREW, THANKS, IF YOU HAPPEN BY.
 namespace camera_hardware_time_seconds  
   def origin := camera_hardware_time.origin 
   def basis' := camera_hardware_time.basis 
