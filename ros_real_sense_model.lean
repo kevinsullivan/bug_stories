@@ -8,6 +8,7 @@ noncomputable theory
 -- TODO: Should come from some library
 def milliseconds := (0.001)           -- names not clear, inverted?
 def milliseconds_to_seconds := 1000   -- names not clear, inverted?
+def seconds := 1                      -- think about this more
 
 -- TODO: Should come from resp. std libraries and be distributed to them accordingly
 namespace std
@@ -121,8 +122,6 @@ def duration (d : K) := mk_duration coords d
 end camera_system_time
 
 
--- STOPPED HERE
-
 /-
 
 As we must convert from milliseconds (as retrieved through the rs2::Frame API) to seconds,
@@ -182,26 +181,14 @@ def duration (d: K) := mk_duration coords d
 end  camera_hardware_time
 
 
--- STOPPED HERE
-
-/-
-
-Similar to the definition of camera_system_time_acs, we define camera_hardware_time_seconds, reflecting the
-need to convert from camera_hardware_time_acs (in milliseconds) to an ACS expressed in seconds.
-
-(1) ORIGIN: The origin is unchanged from camera_hardware_time_acs
-
-(2) BASIS VECTORS
-    basis0 
-      - points to the future
-      - unit length is 1 second
-      - The dilation factor is unchanged from the parent ACS
-(3) ACS is given by [Origin, b0]
--/
-def camera_hardware_time_seconds : time_space _ := 
-  let origin := mk_time camera_hardware_time_acs 0 in
-  let basis := mk_duration camera_hardware_time_acs milliseconds_to_seconds in
-  mk_time_space (mk_time_frame origin basis)
+namespace camera_hardware_time_seconds 
+def origin := camera_hardware_time.time 0 
+def basis := camera_hardware_time.duration milliseconds_to_seconds 
+def frame := mk_time_frame origin basis
+def coords := mk_time_space frame
+def time (t : K) := mk_time coords t
+def duration (d: K) := mk_duration coords d
+end camera_hardware_time_seconds
 
 /-
 This is the ROS client (of the RealSense camera) node's system time, an OS approximation
@@ -229,6 +216,22 @@ which reflects the current drift of the clock's origin
 
 (3) ACS is given by [Origin, b0]
 -/
+
+
+namespace platform_time_in_seconds  
+  axiom δ₂ : scalar 
+  axiom ε₂ : scalar
+  def origin := mk_time utc.coords δ₂ 
+  def basis := mk_duration utc.coords (seconds*ε₂)  
+  -- camera_hardware_time.duration milliseconds_to_seconds
+  -- closer inspection here to make sure Kevin didn't botch anything 
+  def frame := mk_time_frame origin basis
+  def coords := mk_time_space frame
+  def time (t : K) := mk_time coords t 
+end platform_time_in_seconds
+
+-- Made progress. NOW STOPPED HERE
+
 
 axiom δ₂ : scalar 
 axiom ε₂ : scalar
