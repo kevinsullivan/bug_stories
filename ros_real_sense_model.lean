@@ -194,12 +194,14 @@ end camera_hardware_time_seconds
 Where our nice affine space notations? Now's when we need them.
 -/
 
+/-
 -- NEED HELP HERE, ANDREW, THANKS, IF YOU HAPPEN BY.  *** BROKEN ***
 namespace camera_hardware_time_seconds  
   def origin := camera_hardware_time.origin 
   def basis' := camera_hardware_time.basis 
   mk_time_space (mk_time_frame origin basis)
 end camera_hardware_time_seconds
+-/
 /-
 This is the ROS client (of the RealSense camera) node's system time, an OS approximation
 of the current UTC time expressed in units seconds
@@ -240,18 +242,6 @@ namespace platform_time_in_seconds
   def time (t : K) := mk_time coords t 
 end platform_time_in_seconds
 
--- Made progress. NOW STOPPED HERE
-
-
-axiom δ₂ : scalar 
-axiom ε₂ : scalar
-
-def platform_time_in_seconds := 
-  let seconds := 1 in
-  let origin := mk_time utc_coord_in_seconds δ₂ in
-  let basis := mk_duration utc_coord_in_seconds (seconds*ε₂) in 
-  mk_time_space (mk_time_frame origin basis)
-
 /-
 Lastly formalize the "global time"
 (https://intelrealsense.github.io/librealsense/doxygen/rs__frame_8h.html#a55750afe3461ea7748fbb2ef6fb19e8a)
@@ -274,15 +264,20 @@ the necessary conversion reduces to adjusting the hardware's basis by a factor o
 
 (3) ACS is given by [Origin, b0]
 -/
-def camera_global_time_acs : time_space _ := 
-  let origin := mk_time camera_hardware_time_acs δ₁ in
-  let basis := mk_duration camera_hardware_time_acs (ε₂/ε₁) in 
-  mk_time_space (mk_time_frame origin basis)
+
+namespace camera_global_time
+  axiom δ₁ : scalar 
+  axioms ε₁ ε₂ : scalar
+  def origin := mk_time camera_hardware_time.coords δ₁ 
+  def basis := mk_duration camera_hardware_time.coords (ε₂/ε₁) 
+  def frame := mk_time_frame origin basis
+  def coords := mk_time_space frame
+  def time (t : K) := mk_time coords t
+  def duration (t : K) := mk_duration coords t
+end camera_global_time
 
 /-
-
 CODE FORMALIZATION OVERVIEW
-
 
 The parameter of the method imu_callback_sync, "frame", is either timestamped Acceleration or Angular Velocity Vector. 
 We have no implementation for either in Peirce (or for sum types for that matter).
