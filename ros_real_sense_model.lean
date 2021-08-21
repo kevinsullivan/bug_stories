@@ -171,8 +171,8 @@ share the same rate of error.
 
 namespace camera_hardware_time
 axioms (δ₁ ε₁ : scalar) -- clock offset and scaling error factors; not used here (TODO)
-def origin := mk_time utc.coords 0 
-def basis := mk_duration utc.coords (milliseconds*ε₁)  
+def origin := mk_time utc.coords 0                    -- interp: 
+def basis := mk_duration utc.coords (milliseconds*ε₁) -- interp:  
 def frame := mk_time_frame origin basis
 def coords : time_space _ := mk_time_space frame
 def time (t : K) := mk_time coords t
@@ -180,7 +180,7 @@ def duration (d: K) := mk_duration coords d
 end  camera_hardware_time
 
 
--- STOPPED HERE
+-- STOPPED HERE, BUT MOVING ON NOW, CHECK IN LATER
 
 /-
 
@@ -196,11 +196,11 @@ need to convert from camera_hardware_time_acs (in milliseconds) to an ACS expres
       - The dilation factor is unchanged from the parent ACS
 (3) ACS is given by [Origin, b0]
 -/
-def camera_hardware_time_seconds : time_space _ := 
-  let origin := mk_time camera_hardware_time_acs 0 in
-  let basis := mk_duration camera_hardware_time_acs milliseconds_to_seconds in
+namespace camera_hardware_time_seconds  
+  def origin := camera_hardware_time.origin 
+  def basis' := camera_hardware_time.basis 
   mk_time_space (mk_time_frame origin basis)
-
+end camera_hardware_time_seconds
 /-
 This is the ROS client (of the RealSense camera) node's system time, an OS approximation
 of the current UTC time expressed in units seconds
