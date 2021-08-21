@@ -121,8 +121,6 @@ def duration (d : K) := mk_duration coords d
 end camera_system_time
 
 
--- STOPPED HERE
-
 /-
 
 As we must convert from milliseconds (as retrieved through the rs2::Frame API) to seconds,
