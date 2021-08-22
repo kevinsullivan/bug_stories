@@ -17,7 +17,8 @@
 		"coenraads.bracket-pair-colorizer",
 		"stephanvs.dot",
 		"jroesch.lean",
-		"ms-vscode-remote.remote-ssh"
+		"ms-vscode-remote.remote-ssh",
+		"GitHub.vscode-pull-request-github",
 	],
 	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
 	"unwantedRecommendations": []

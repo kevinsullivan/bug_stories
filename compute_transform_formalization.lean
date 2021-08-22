@@ -76,8 +76,9 @@ def UTM_acs : geom3d_space _  :=
 /-
 We define a base_link_yaw_only frame. This is intended to represent
 the base link frame, however, projected onto a 2-D coordinate sytem
-(where there is only a yaw).
+(where there is only a yaw rotation).
 
+Andrew - update these coordinates with more accurate representations.
 -/
 def base_link_yaw_only_acs : geom3d_space _ := 
  let origin := mk_position3d geometry3d_acs 2 2 0 in
@@ -87,27 +88,6 @@ def base_link_yaw_only_acs : geom3d_space _ :=
  let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
   mk_geom3d_space fr
 
-
-/-
-
-    //! @brief Holds the cartesian (UTM or local ENU) pose that is used to compute the transform
-    //!
-    tf2::Transform transform_cartesian_pose_;
--/
-
-/-
--/
-axiom transform_cartesian_pose_ : pose3d geometry3d_acs
-
-/-
-
-    //! @brief Latest IMU orientation
-    //!
-    tf2::Transform transform_world_pose_;
-
--/
-
-axiom transform_world_pose_ : geom3d_transform geometry3d_acs UTM_acs
 
 
 /-
@@ -131,129 +111,194 @@ axiom transform_world_pose_ : geom3d_transform geometry3d_acs UTM_acs
     //! (NOTE: if you have a magenetic declination, use the parameter setting for that).
     //!
     double yaw_offset_;
+
+    //! @brief Latest IMU orientation
+    //!
+    tf2::Quaternion transform_orientation_;
+
+    //! @brief Latest IMU orientation
+    //!
+    tf2::Transform transform_world_pose_;
+
+    //! @brief Holds the Cartesian->odom transform
+    //!
+    tf2::Transform cartesian_world_transform_;
+
+    //! @brief Holds the cartesian (UTM or local ENU) pose that is used to compute the transform
+    //!
+    tf2::Transform transform_cartesian_pose_;
+
 -/
 
-axiom magnetic_declination_ : scalar 
-axiom utm_meridian_convergence_ : scalar 
-axiom yaw_offset_ : scalar
-
 /-
-  void NavSatTransform::computeTransform()
-  {
+This is a transpiled version of the class containing the critical code, named "NavSatTransform". It contains (only)
+the relevant class properties that are referenced in the methods relevant to where the isolated bug is.
+
 -/
 
-
-def getRobotOriginCartesianPose 
-  : geom3d_transform geometry3d_acs UTM_acs → pose3d geometry3d_acs → time current_time_in_UTC → punit
-  := 
-  λ gps_cartesian_pose, λ robot_cartesian_pose, λ transform_time, punit.star
-
-
-def getRPY : scalar → scalar → scalar → punit := 
-  λ s1 s2 s3, punit.star
+structure NavSatTransform := 
+ (magnetic_declination_ : scalar)
+ (utm_meridian_convergence_ : scalar)
+ (yaw_offset_ : scalar)
+ (transform_orientation_ : orientation3d geometry3d_acs)
+ (transform_world_pose_  : geom3d_transform geometry3d_acs base_link_acs)
+ (transform_cartesian_pose_ : geom3d_transform geometry3d_acs UTM_acs)
 
 /-
-
-  void NavSatTransform::getRobotOriginCartesianPose(const tf2::Transform &gps_cartesian_pose,
-                                                    tf2::Transform &robot_cartesian_pose,
-                                                    const ros::Time &transform_time)
+    void NavSatTransform::getRobotOriginWorldPose(const tf2::Transform &gps_odom_pose,
+                                                tf2::Transform &robot_odom_pose,
+                                                const ros::Time &transform_time)
   {
-    robot_cartesian_pose.setIdentity();
-
-    // Get linear offset from origin for the GPS
-    tf2::Transform offset;
+    robot_odom_pose.setIdentity();
+    tf2::Transform gps_offset_rotated;
     bool can_transform = RosFilterUtilities::lookupTransformSafe(tf_buffer_,
                                                                  base_link_frame_id_,
                                                                  gps_frame_id_,
                                                                  transform_time,
-                                                                 ros::Duration(transform_timeout_),
-                                                                 offset);
+                                                                 transform_timeout_,
+                                                                 gps_offset_rotated);
 
     if (can_transform)
     {
-      // Get the orientation we'll use for our Cartesian->world transform
-      tf2::Quaternion cartesian_orientation = transform_orientation_;
-      tf2::Matrix3x3 mat(cartesian_orientation);
-
-      // Add the offsets
-      double roll;
-      double pitch;
-      double yaw;
-      mat.getRPY(roll, pitch, yaw);
-      yaw += (magnetic_declination_ + yaw_offset_ + utm_meridian_convergence_);
-      cartesian_orientation.setRPY(roll, pitch, yaw);
-
-      // Rotate the GPS linear offset by the orientation
-      // Zero out the orientation, because the GPS orientation is meaningless, and if it's non-zero, it will make the
-      // the computation of robot_cartesian_pose erroneous.
-      offset.setOrigin(tf2::quatRotate(cartesian_orientation, offset.getOrigin()));
-      offset.setRotation(tf2::Quaternion::getIdentity());
-
-      // Update the initial pose
-      robot_cartesian_pose = offset.inverse() * gps_cartesian_pose;
+      tf2::Transform robot_orientation;
+      can_transform = RosFilterUtilities::lookupTransformSafe(tf_buffer_,
+                                                              world_frame_id_,
+                                                              base_link_frame_id_,
+                                                              transform_time,
+                                                              transform_timeout_,
+                                                              robot_orientation);
+      if (can_transform)
+      {
+        gps_offset_rotated.setOrigin(tf2::quatRotate(robot_orientation.getRotation(), gps_offset_rotated.getOrigin()));
+        gps_offset_rotated.setRotation(tf2::Quaternion::getIdentity());
+        robot_odom_pose = gps_offset_rotated.inverse() * gps_odom_pose;
+      }
+      else
+      {
+      }
     }
     else
     {
-      if (gps_frame_id_ != "")
-      {
-        ROS_WARN_STREAM_ONCE("Unable to obtain " << base_link_frame_id_ << "->" << gps_frame_id_ <<
-          " transform. Will assume navsat device is mounted at robot's origin");
-      }
-
-      robot_cartesian_pose = gps_cartesian_pose;
     }
   }
+
 -/
-
-axiom imu_roll : scalar
-axiom imu_pitch : scalar
-axiom imu_yaw : scalar
-
-def compute_transform : punit := 
-  --let transform_world_pose_ : geom3d_transform_expr World BaseLink := ((|World.value.mk_geom3d_transform_to BaseLink.value|:geom3d_transform_expr World BaseLink)) in
-  --let cartesian_world_transform_ : geom3d_transform_expr World UTM := ((|World.value.mk_geom3d_transform_to UTM.value|:geom3d_transform_expr World UTM)) in
-  --let cartesian_pose_with_orientation : geom3d_transform_expr UTM BaseLinkYawOnly := ((|UTM.value.mk_geom3d_transform_to BaseLinkYawOnly.value|:geom3d_transform_expr UTM BaseLinkYawOnly)) in
-  --let cartesian_world_transform_0 : geom3d_transform_expr World UTM := ((transform_world_pose_ : geom3d_transform_expr World BaseLink)).value∘((((cartesian_pose_with_orientation : geom3d_transform_expr UTM BaseLinkYawOnly))⁻¹:geom3d_transform_expr BaseLinkYawOnly UTM)).value in
-  let transform_cartesian_pose_corrected : pose3d UTM_acs := inhabited.default _ in
-  let getRobotOriginCartesianPoseCall : punit 
-    := getRobotOriginCartesianPose transform_cartesian_pose_ transform_cartesian_pose_corrected (mk_time current_time_in_UTC 0) in
-
-  let mat : orientation3d geometry3d_acs := inhabited.default _ in 
-
-  let imu_roll : scalar := imu_roll in
-  let imu_pitch : scalar := imu_pitch in 
-  let imu_yaw : scalar := imu_yaw in 
-
-  let getRPYCall : punit := getRPY imu_roll imu_pitch imu_yaw in 
-  let imu_yaw0 := imu_yaw + magnetic_declination_ + yaw_offset_ + utm_meridian_convergence_ in 
-
-  let imu_quat : orientation3d base_link_acs := inhabited.default _ in 
-
 
 /-
+Transpilation of "tf::Transform::setIdentity"
+Notice that this method is "bound" to pose3d in Lean, so there is an interesting subtlety in how these would need to be 
+printed off (possibly with duplicates).
 
-      cartesian_pose_with_orientation.setOrigin(transform_cartesian_pose_corrected.getOrigin());
-      cartesian_pose_with_orientation.setRotation(imu_quat);
-
-      We have no way to formalize these two lines
+The other aspect to notice is that the purpose of this method, in C++, is an in-place assignment. We lose a particular aspect of the 
+original semantics here. We can see a re-assignment of the argument, p, below. However, the original semantics require an in-place assignment.
+Thus, the caller expects that the member argument, p, has been re-assigned, but, as it is modeled, 
+the member argument is assigned *into* p0, and the enclosing scope does not have access to the updated value of p. 
+This is a broader issue and does not have a simple solution, such as forcibly convering this method and all call sites as assignments.
 -/
-  let cartesian_pose_with_orientation : geom3d_transform geometry3d_acs base_link_acs := 
-    (geometry3d_acs.mk_geom3d_transform_to base_link_acs) in 
-
-  let cartestian_world_transform_ := transform_world_pose_∘cartesian_pose_with_orientation in 
-
-
+def pose3d.setIdentity {f : geom3d_frame} {sp : geom3d_space f} (p : pose3d sp) : punit := 
+  let p0 : pose3d sp := {
+    position := inhabited.default _, 
+    orientation := inhabited.default _
+  } in
   punit.star
+
+
 /-
-  void NavSatTransform::computeTransform()
-  {
-    if (!transform_good_ &&
-        has_transform_odom_ &&
-        has_transform_gps_ &&
-        has_transform_imu_)
-    {
+
+Just as above, transpilation of "getRPY" call from matrices or quaternions in ROS. 
+The intended semantics of this method should perform an in-place assignment of the arguments, 
+(roll pitch and yaw angles). Unfortunately, we face the same challenge as above. 
+
+(also, I haven't implemented the Lean orientation call to retrieve these values...will do so soon)
+-/
+def orientation3d.getRPY {f : geom3d_frame} {sp : geom3d_space f } 
+  (o : orientation3d sp) 
+  : scalar → scalar → scalar → punit := 
+  λ s1 s2 s3,
+  punit.star 
+
+/-
+
+    void NavSatTransform::getRobotOriginWorldPose(const tf2::Transform &gps_odom_pose,
+                                                tf2::Transform &robot_odom_pose,
+                                                const ros::Time &transform_time)
+
+This is the formalization of a helper function reference in the function "computeTransform",
+formalized below, which describes the error of interest to the issue. There are no physical
+type errors in this method, although formalizing raised some interesting issues. 
+
+It is defined as a "Lean-esque member function" of NavSatTransform.
+
+For example, Poses and Transforms share the same type in C++, whereas they are modeled differently 
+-/
+def NavSatTransform.getRobotOriginCartesianPose (nst : NavSatTransform)
+  : geom3d_transform geometry3d_acs UTM_acs → pose3d geometry3d_acs → time current_time_in_UTC → punit
+  := 
+    λ gps_cartesian_pose, λ robot_cartesian_pose, λ transform_time, 
+    --robot_cartesian_pose.setIdentity();
+    let setIdentityCall := robot_cartesian_pose.setIdentity in 
+    --tf2::Quaternion cartesian_orientation = transform_orientation_;
+    let cartesian_orientation : orientation3d geometry3d_acs := nst.transform_orientation_ in 
+    --tf2::Matrix3x3 mat(cartesian_orientation);
+    let mat : orientation3d geometry3d_acs := cartesian_orientation in 
+
+    /-
+    double roll;
+    double pitch;
+    double yaw;
+    -/
+    let roll : scalar := inhabited.default _ in 
+    let pitch : scalar := inhabited.default _ in 
+    let yaw : scalar := inhabited.default _ in 
+
+    --mat.getRPY(roll, pitch, yaw);
+    let getRPYCall := mat.getRPY roll pitch yaw in 
+    let yaw0 := yaw + nst.magnetic_declination_ + nst.yaw_offset_ + nst.utm_meridian_convergence_ in 
+    --yaw += (magnetic_declination_ + yaw_offset_ + utm_meridian_convergence_);
+    /-
+    cartesian_orientation.setRPY(roll, pitch, yaw);
+    A note here: A more "literal" translation of the above line would involve a call to "setRPY",
+    which, again, is an in-place assignment to cartesian_orientation. Fortunately, if we don't
+    attempt that route, we can directly assign to the variable (SSA-style) using "mk_orientation3d_from_euler_angles",
+    which carries the same semantics as the original C++.
+    -/
+    let cartesian_orientation0 := mk_orientation3d_from_euler_angles geometry3d_acs roll pitch yaw in
+
+    /-
+    offset.setOrigin(tf2::quatRotate(cartesian_orientation, offset.getOrigin()));
+    offset.setRotation(tf2::Quaternion::getIdentity());
+    
+    robot_cartesian_pose = offset.inverse() * gps_cartesian_pose;
+
+    We have no way of formalizing this code. "offset" is intended to be a transform - but we provide 
+    no way to set the "origin" or "rotation" of a Transform, and, it's not a simple fix, it's a bit beyond the scope of 
+    our formalization currently.
+    -/
+
+    punit.star
+
+/-
+void NavSatTransform::computeTransform()
+
+This is the principal function in which the error of interest is modeled. 
+It is a member function of the C++ class "NavSatTransform", and here, in Lean, it is modeled
+as a "member function" of the structure NavSatTransform. 
+
+The gist of the function and error, below, is that we will first "construct" 
+  the Transform from UTM → Base Link Yaw Only, T₁, and then we will "use" the member transform_world_pose_, T₂,
+  of NavSatTransform, which is a transform from World → Base Link, in order to construct a transform from 
+  World → UTM, by taking T₂∘(T₁⁻¹). However, the domain of T₁⁻¹ does not match the codomain of T₂,
+  yielding a type error in Lean that was not captured in the original code.
+-/
+def NavSatTransform.compute_transform 
+  (nst : NavSatTransform)
+  : punit := 
+  /-
       tf2::Transform transform_cartesian_pose_corrected;
-      if (!use_manual_datum_)
+  -/
+  let transform_cartesian_pose_corrected : pose3d geometry3d_acs := inhabited.default _ in
+  /-
+  if (!use_manual_datum_)
       {
         getRobotOriginCartesianPose(transform_cartesian_pose_, transform_cartesian_pose_corrected, ros::Time(0));
       }
@@ -262,43 +307,67 @@ def compute_transform : punit :=
         transform_cartesian_pose_corrected = transform_cartesian_pose_;
       }
 
+  Notice here, we simply assume an execution path. We assume that the former branch triggers, and thus, a call
+  to the previously formalized member function of NavSatTransform is called
+  -/
+  let getRobotOriginCartesianPoseCall : punit 
+    := nst.getRobotOriginCartesianPose nst.transform_cartesian_pose_ transform_cartesian_pose_corrected (mk_time current_time_in_UTC 0) in
+  /-
       tf2::Matrix3x3 mat(transform_orientation_);
+  -/
+  let mat : orientation3d geometry3d_acs := inhabited.default _ in 
 
+  /-
       double imu_roll;
       double imu_pitch;
       double imu_yaw;
       mat.getRPY(imu_roll, imu_pitch, imu_yaw);
+  -/
+  let imu_roll : scalar := inhabited.default _ in
+  let imu_pitch : scalar := inhabited.default _ in 
+  let imu_yaw : scalar := inhabited.default _ in 
+  /-
+  This does not correctly model the semantics of in-place assignment, as described earlier.
+  -/
+  let getRPYCall : punit := mat.getRPY imu_roll imu_pitch imu_yaw in 
 
-      imu_yaw += (magnetic_declination_ + yaw_offset_ + utm_meridian_convergence_);
+  --imu_yaw += (magnetic_declination_ + yaw_offset_ + utm_meridian_convergence_);
+  /-
+  
+  -/
+  let imu_yaw0 := imu_yaw + nst.magnetic_declination_ + nst.yaw_offset_ + nst.utm_meridian_convergence_ in 
 
-      tf2::Quaternion imu_quat;
-      imu_quat.setRPY(0.0, 0.0, imu_yaw);
+  /-
+  tf2::Quaternion imu_quat;
+  imu_quat.setRPY(0.0, 0.0, imu_yaw);
 
-      tf2::Transform cartesian_pose_with_orientation;
+  -/
+  let imu_quat : orientation3d base_link_acs := inhabited.default _ in 
+  let imu_quat0 : orientation3d base_link_acs := mk_orientation3d_from_euler_angles _ imu_roll imu_pitch imu_yaw in
+
+/-
+
       cartesian_pose_with_orientation.setOrigin(transform_cartesian_pose_corrected.getOrigin());
       cartesian_pose_with_orientation.setRotation(imu_quat);
 
-      cartesian_world_transform_.mult(transform_world_pose_, cartesian_pose_with_orientation.inverse());
+      We have no way to formalize these two lines. As described earlier, in our current architecture, a 
+      Transform is defined simply by providing two coordinate spaces, and we receive the *fixed* transform
+      between those two spaces. In ROS, coordinate spaces *vary* over time, and thus, transforms are not necessarily 
+      fixed, and we can assign to their properties in an ad hoc manner, which often represents a transform at a particular time.
+      Time Series, at least as we've currently modeled them, do not provide a solution to this limitation.
 
-      cartesian_world_transform_world_pose_trans_inverse_ = cartesian_world_transform_.inverse();
+      To capture the semantics, I ignore the constructed transform_cartesian_pose_corrected origin and imu_quat, and
+      construct the transform from UTM → Base Link Yaw Only as we conventionally construct it.
+-/
+  let cartesian_pose_with_orientation : geom3d_transform _ _ := 
+    (UTM_acs.mk_geom3d_transform_to base_link_yaw_only_acs) in 
 
-      transform_good_ = true;
+  /-
+  Here is where the error occurs: We attempt to compose a transform from World → Base Link, with the inverse of a transform from 
+  UTM → Base Link Yaw Only, by taking T₂∘(T₁⁻¹). However, the domain of T₁⁻¹ does not match the codomain of T₂,
+  yielding a type error in Lean that was not captured in the original code.
+  -/
+  let cartestian_world_transform_ := (nst.transform_world_pose_.trans (cartesian_pose_with_orientation.symm)) in
 
-      if (broadcast_cartesian_transform_)
-      {
-        geometry_msgs::TransformStamped cartesian_transform_stamped;
-        cartesian_transform_stamped.header.stamp = ros::Time::now();
-        std::string cartesian_frame_id = (use_local_cartesian_ ? "local_enu" : "utm");
-        cartesian_transform_stamped.header.frame_id = (broadcast_cartesian_transform_as_parent_frame_ ?
-                                                       cartesian_frame_id : world_frame_id_);
-        cartesian_transform_stamped.child_frame_id = (broadcast_cartesian_transform_as_parent_frame_ ?
-                                                      world_frame_id_ : cartesian_frame_id);
-        cartesian_transform_stamped.transform = (broadcast_cartesian_transform_as_parent_frame_ ?
-                                             tf2::toMsg(cartesian_world_trans_inverse_) :
-                                             tf2::toMsg(cartesian_world_transform_));
-        cartesian_transform_stamped.transform.translation.z = (zero_altitude_ ?
-                                                           0.0 : cartesian_transform_stamped.transform.translation.z);
-        cartesian_broadcaster_.sendTransform(cartesian_transform_stamped);
-      }
-    }
-  }-/
+
+  punit.star
