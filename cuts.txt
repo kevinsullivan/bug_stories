@@ -1,0 +1,59 @@
+
+
+
+/-
+We need a foundational physical interpretation of the data
+representing our coordinate system on time. We derive a new ACS from 
+"coordinated_universal_time_in_seconds" - see time_std.lean 
+for a more details on the coordinate system and physical interpretation
+(note : this is a conventional UTC ACS expressed with units in seconds)
+
+The gist of this interpretation of our "world time" is that we have formalized
+some fixed time at which our application is run, expressed in terms of UTC. 
+To do so, we have simply translated the UTC origin to the time at which this was written,
+August 18th at ~240 PM. Note: any arbitrary time does not hold any impact on our formal model
+(although presumably if we set the origin to the stone age, 
+  there should not be a robotics camera running there).
+We do not change the basis - which is a standard 
+basis whose unit vectors are expressed in seconds.
+
+
+(1) ORIGIN: We move the origin up to 1629311979
+
+(2) BASIS VECTORS
+    basis0 
+      - points to the future
+      - unit length is 1 second (as in UTC)
+      - Presumably no dilation occur, since this is supposed to represent "empirical"
+        (atomically-sampled-and-average-weighted) time
+(3) ACS is given by [Origin, b0]
+-/
+
+=================
+
+/-
+DATED
+
+We're assuming a RealSense D435I hardware
+unit. It comes with a defined coordinate
+system.
+
+We'll assume that the camera_imu is two
+meters to the right along the back wall,
+one meter out from the wall and one meter
+high. We'll inhert the standard vector 
+space structure from the world_geom_acs.
+
+That's its position in space. As for its
+orientation, we'll use the orientation provided
+by realsense documentation. In ROS orientation
+notation, we might call that 'EDN'
+
+1. The positive x-axis points to the subject.
+2. The positive y-axis points down.
+3. The positive z-axis points forward
+-/
+
+=============
+
+-- def Aug18Two40PM := utc_time 1629311979

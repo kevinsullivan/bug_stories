@@ -327,9 +327,8 @@ void BaseRealSenseNode::imu_callback_sync(rs2::frame dataframe, imu_sync_method 
 -/
 def August18thTwoFortyPMTimestamp : scalar := 1629311979
 def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d camera.coords) → punit := 
-  /-
-***** KEVIN STOPPED HERE *****
 
+/-
   We define the argument to the method, dataframe. It has an interpretation of 
     timestamped camera_time.coords (displacement3d camera_imu.coords)
   , although it's actual physical type manifest in the code would be an Acceleration or Angular Velocity Vector, representing
