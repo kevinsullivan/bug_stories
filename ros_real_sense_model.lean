@@ -323,18 +323,28 @@ Lastly, when adding a coordinate from a time expressed in our platform time WITH
 
 
 
-***** KEVIN STOPPED HERE *****
+***** KEVIN RESUMED HERE *****
 
 void BaseRealSenseNode::imu_callback_sync(rs2::frame dataframe, imu_sync_method sync_method)
 -/
-def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d camera_imu_acs) → punit := 
+
+/-
+KEVIN: 
+- Which ACS is camera_imu_acs?
+- What is "timestamped"?
+-/ 
+
+def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d camera.coords) → punit := 
   /-
-  We define the argument to the method, dataframe. It has an interpretation of 
-    timestamped camera_time_acs (displacement3d camera_imu_acs)
-  , although it's actual physical type manifest in the code would be an Acceleration or Angular Velocity Vector, representing
-  a timestamped reading coming from a Gyroscope or Accelerometer.
+    We name the argument dataframe.
   -/
-  λ dataframe, 
+  λ (dataframe : timestamped camera_system_time.coords (displacement3d camera_imu_acs)), 
+  /-
+    In the original code, it represents a timestamped Acceleration 
+    or Angular Velocity vector coming from a Gyroscope or Accelerometer.
+    Kevin: A bit more work could add value here.
+  -/
+
   /- 
     double frame_time = frame.get_timestamp();
 
