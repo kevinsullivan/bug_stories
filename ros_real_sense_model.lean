@@ -125,10 +125,10 @@ end camera_system_time
 /-
 
 As we must convert from milliseconds (as retrieved through the rs2::Frame API) to seconds,
-we express a new ACS which simply conveys the camera_system_time_acs, defined and described 
+we express a new ACS which simply conveys the camera_system_time.coords, defined and described 
 just above, with units in seconds rather than milliseconds.
 
-(1) ORIGIN: The origin is unchanged from camera_system_time_acs
+(1) ORIGIN: The origin is unchanged from camera_system_time.coords
 
 (2) BASIS VECTORS
     basis0 
@@ -155,7 +155,7 @@ This is a zero-initiated time (it does not reflect the current time in UTC, rath
 time has passed since the camera has begun transmitting data).
  
 We define this in terms of UTC time, giving it an origin of 0, with no intrinsic "drift". We share the same
-dilation factor as camera_system_time_acs, as we are making the assumption that both of these measurements 
+dilation factor as camera_system_time.coords, as we are making the assumption that both of these measurements 
 share the same rate of error.
 
 (1) ORIGIN: 0, reflecting that each run of the camera begins at the UTC origin, rather than at the current time
@@ -202,7 +202,7 @@ One gap to mention here is that this will be used to annotate the system time, w
 representation of seconds + nanoseconds, so there is arguably some mismatch when we
 annotate the ros::Time variable simply as having units in seconds.
 
-As with our previously-defined camera_system_time_acs, we model a small drift from the origin,
+As with our previously-defined camera_system_time.coords, we model a small drift from the origin,
 as well as a constant dilation factor to represent the idiosyncratic error of the clock.
 
 
@@ -249,7 +249,7 @@ the necessary conversion reduces to adjusting the hardware's basis by a factor o
 (2) BASIS VECTORS
     basis0 
       - points to the future
-      - unit length is 1 millisecond (specified in parent ACS, camera_hardware_time_acs)
+      - unit length is 1 millisecond (specified in parent ACS, camera_hardware_time.coords)
       - A dilation factor, ε₂/ε₁, which removes the scaling of the camera's clock, and applies the ROS node's clock dilation
 
 
@@ -282,9 +282,9 @@ is currently constructed, annotates a single execution path. Thus,
 to model two execution paths, we need two versions of a formalism. 
 
 In the first instance, we presume that we've received 
-"_camera_time_base" in the camera_hardware_time_acs ACS, 
+"_camera_time_base" in the camera_hardware_time.coords ACS, 
 but that we've just received a dataframe whose timestamp 
-"dataframe.timestamp" domain is expressed in camera_system_time_acs. 
+"dataframe.timestamp" domain is expressed in camera_system_time.coords. 
 
 What transpires is that we will subtract two timestamps - 
 "dataframe.timestamp - _camera_time_base", which will yield a 
@@ -297,9 +297,9 @@ operands are compatibile, in this case, but the origins are
 obviously off by dramatic amounts.
 
 In the second instance, we presume that we've received 
-"_camera_time_base" in the camera_global_time_acs ACS, 
+"_camera_time_base" in the camera_global_time.coords ACS, 
 but that we've just received a dataframe whose timestamp 
-"dataframe.timestamp" domain is in camera_hardware_time_acs. 
+"dataframe.timestamp" domain is in camera_hardware_time.coords. 
 The only difference from above is that, the error will 
 result in a smaller error - to the tune of a few hundred 
 MS  (varying over time, as the dilation rates are not in
@@ -325,12 +325,12 @@ Lastly, when adding a coordinate from a time expressed in our platform time WITH
 
 void BaseRealSenseNode::imu_callback_sync(rs2::frame dataframe, imu_sync_method sync_method)
 -/
-def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d camera_imu_acs) → punit := 
-  /-
-***** KEVIN STOPPED HERE *****
+def August18thTwoFortyPMTimestamp : scalar := 1629311979
+def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d camera.coords) → punit := 
 
+/-
   We define the argument to the method, dataframe. It has an interpretation of 
-    timestamped camera_time_acs (displacement3d camera_imu_acs)
+    timestamped camera_time.coords (displacement3d camera_imu.coords)
   , although it's actual physical type manifest in the code would be an Acceleration or Angular Velocity Vector, representing
   a timestamped reading coming from a Gyroscope or Accelerometer.
   -/
@@ -351,8 +351,8 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
     data from the RealSense camera data feed. _camera_time_base is intended to represent the first time point at which the camera
     has sent an IMU data reading, expressed in terms of the clock directly on the camera.
   -/
-  let _ros_time_base := mk_time platform_time_in_seconds August18thTwoFortyPMTimestamp in
-  let _camera_time_base := mk_time camera_hardware_time_acs 10 in -- 10 is an arbitrary constant
+  let _ros_time_base := mk_time platform_time_in_seconds.coords August18thTwoFortyPMTimestamp in
+  let _camera_time_base := mk_time camera_hardware_time.coords 10 in -- 10 is an arbitrary constant
 --double elapsed_camera_ms = (/*ms*/ frame_time - /*ms*/ _camera_time_base) / 1000.0;
 /-
   We take the difference between the first camera measurement, when the method "imu_callback_sync" was first called, and 
@@ -364,8 +364,8 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
   there is a type error, as we are attempting to assign a value in an ACS representing seconds to a variable in an ACS
   representing milliseconds, which portrays a misconception by the developer when naming this variable.
 -/
-  let elapsed_camera_ms : duration camera_system_time_acs
-    := (camera_system_time_acs.mk_time_transform_to camera_system_time_seconds).transform_duration ((dataframe_time -ᵥ _camera_time_base : duration camera_system_time_acs)) in
+  let elapsed_camera_ms : duration camera_system_time.coords
+    := ((camera_system_time.coords).mk_time_transform_to camera_system_time_seconds.coords : time_transform camera_system_time.coords camera_system_time.coords).transform_duration ((dataframe_time -ᵥ _camera_time_base : duration camera_system_time.coords)) in
     /-
         auto crnt_reading = *(reinterpret_cast<const float3*>(frame.get_data()));
         Eigen::Vector3d v(crnt_reading.x, crnt_reading.y, crnt_reading.z);
@@ -377,14 +377,14 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
         using those respectively in the constructor to Eigen::Vector3d, and binding the constructed value into a variable called v. 
 
         We model in this in Lean simply by defining a value called "crnt_reading" and assigning the vector-valued data property stored in the 
-        timestamped dataframe method argument. Since the physical type of the dataframe is "timestamped camera_time_acs (displacement3d camera_imu_acs)",
-        we know that the type of crnt_reading must simply be "displacement3d camera_imu_acs".
+        timestamped dataframe method argument. Since the physical type of the dataframe is "timestamped camera_time.coords (displacement3d camera_imu.coords)",
+        we know that the type of crnt_reading must simply be "displacement3d camera_imu.coords".
 
-        Next, we construct the vector v in the code. We define a variable v, which, again, has the physical type "displacement3d camera_imu_acs",
+        Next, we construct the vector v in the code. We define a variable v, which, again, has the physical type "displacement3d camera_imu.coords",
           since it is built by simply constructing a new displacement3d using the exact same x, y, and z coordinates of the prior value, crnt_reading.
     -/
-  let crnt_reading : displacement3d camera_imu_acs := dataframe.value in
-  let v : displacement3d camera_imu_acs := mk_displacement3d camera_imu_acs crnt_reading.x crnt_reading.y crnt_reading.z in
+  let crnt_reading : displacement3d camera.coords := dataframe.value in
+  let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
   --CimuData imu_data(stream_index, v, elapsed_camera_ms);
   /-
   The constructor of CimuData in the next line of code simply re-packages the vector data stored in the original frame argument,
@@ -392,12 +392,12 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
   a timestamped displacement3d, but this time, the timestamp is expressed in terms of the camera_time_seconds ACS, as the developer
   explicitly converted from milliseconds into seconds when constructing what is intended to be the timestamp, elapsed_camera_seconds.
   
-  Thus, in order to formalize this in Lean, declare a variable called "imu_data" with type "timestamped camera_time_seconds (displacement3d camera_imu_acs)", 
+  Thus, in order to formalize this in Lean, declare a variable called "imu_data" with type "timestamped camera_time_seconds (displacement3d camera_imu.coords)", 
   and populate it using the vector-valued data v (which is, again, the same displacement3d encapsulated in the argument to the method), 
   as well as the variable "elapsed_camera_ms" as a timestamp, which, again is a duration, not a point, 
   as it is the result of subtracting two time variables, and so, we see an error here in our formalization.
   -/
-  let imu_data : timestamped camera_system_time_seconds (displacement3d camera_imu_acs) := ⟨elapsed_camera_ms, v⟩ in
+  let imu_data : timestamped camera_system_time_seconds.coords (displacement3d camera.coords) := ⟨elapsed_camera_ms, v⟩ in
   /-
   std::deque<sensor_msgs::Imu> imu_msgs;
   switch (sync_method)
@@ -420,10 +420,10 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
   and sync_method is set to "LINEAR_INTERPOLATION") into deque "imu_msgs". The purpose of the method call is that entries are added to imu_msgs, so this is
   simulated by simply instantiating the list with an initial value: imu_data - the timestamped value that we've constructed above. Note that
   due to our limitations in Peirce, we have annotated the type of imu_msgs as being the type of the data that we have available, 
-    "(timestamped camera_time_seconds (displacement3d camera_imu_acs))", as opposed to a timestamped IMU message, since we are not yet able to formalize the latter.
+    "(timestamped camera_time_seconds (displacement3d camera_imu.coords))", as opposed to a timestamped IMU message, since we are not yet able to formalize the latter.
   -/
 
-  let imu_msgs : list (timestamped camera_system_time_seconds (displacement3d camera_imu_acs)) := [imu_data] in
+  let imu_msgs : list (timestamped camera_system_time_seconds.coords (displacement3d camera.coords)) := [imu_data] in
 
   /-
   
@@ -435,10 +435,10 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
   We now process each entry in the deque. Each entry has its timestamp updated, then it is published, and then it is removed from the queue, until the queue is empty.
 
   Firstly, we retrieve the front of the queue, which is simply a call to "list.head" in Lean, and, 
-  since "imu_msgs" has type "list (timestamped camera_time_seconds (displacement3d camera_imu_acs))",
-  the resulting expression is simply of type "(timestamped camera_time_seconds (displacement3d camera_imu_acs))"
+  since "imu_msgs" has type "list (timestamped camera_time_seconds (displacement3d camera_imu.coords))",
+  the resulting expression is simply of type "(timestamped camera_time_seconds (displacement3d camera_imu.coords))"
   -/
-  let imu_msg : timestamped camera_system_time_seconds (displacement3d camera_imu_acs) := imu_msgs.head in
+  let imu_msg : timestamped camera_system_time_seconds.coords (displacement3d camera.coords) := imu_msgs.head in
   --ros::Time t(_ros_time_base.toSec() + imu_msg.header.stamp.toSec());
   /-
   The developers now construct a new timestamp for the IMU message first by 
@@ -450,7 +450,7 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
   was computed specifically in the first call to this method) with the overall expression expressed in seconds. The coordinates of this object are extracted via the
   "toSec" call. These two coordinates are added together and used as an argument in the construction of the ros::Time object.
   
-  We've formalized this by interpreting t as a time expressed in the hardware_time_acs. We bind a value to it by constructing a new
+  We've formalized this by interpreting t as a time expressed in the hardware_time.coords. We bind a value to it by constructing a new
   value of type "time camera_time_seconds" via our mk_time call. The complexity resides in how we compute the coordinates to the new time.
 
   We define an overload of the "toSec" call for both _ros_time_base and imu_msg.timestamp, whether to provide a global or context-dependent interpretation for 
@@ -458,14 +458,14 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
   the respective coordinates of _ros_time_base and _imu_msg_timestamp. Thus, the respective overloads are applied using the respective values, _ros_time_base and _imu_msg_timestamp,
   and the resulting expressions, which have type "scalar", are added together and supplied as an argument to the newly constructed time.
 
-  Note here that, although there is no error here, there should be. The coordinates composing the addition operation hail from two different spaces: platform_time_acs and camera_time_seconds,
+  Note here that, although there is no error here, there should be. The coordinates composing the addition operation hail from two different spaces: platform_time.coords and camera_time_seconds,
   which should yield a type error - as these coordinates hail from different ACSes.
   -/
 
-  let t : time camera_system_time_seconds :=
+  let t : time camera_system_time_seconds.coords :=
     mk_time _ 
     ((
-      let _ros_time_base_toSec : time platform_time_in_seconds → scalar := 
+      let _ros_time_base_toSec : time platform_time_in_seconds.coords → scalar := 
       λt, 
         (t).coord in
       _ros_time_base_toSec _ros_time_base
@@ -475,7 +475,7 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
       --casting time to duration discussed
       --Whether or not to first convert "imu_msg.timestamp" from a time (point) to a duration (vector) should be confirmed by Dr. S
       --let imu_time_as_duration := mk_duration camera_time_seconds imu_msg.timestamp.coord in 
-      let _imu_msg_timestamp_toSec : time camera_system_time_seconds → scalar := 
+      let _imu_msg_timestamp_toSec : time camera_system_time_seconds.coords → scalar := 
         λt, 
           t.coord in
       _imu_msg_timestamp_toSec imu_msg.timestamp--imu_time_as_duration
@@ -486,20 +486,25 @@ def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d
 
     imu_msg.header.stamp = t;
     -/
-    let imu_msg0 : timestamped camera_system_time_seconds (displacement3d camera_imu_acs) := {
+    let imu_msg0 : timestamped camera_system_time_seconds.coords (displacement3d camera.coords) := {
       timestamp := t,
       ..imu_msg
     } in
   
     punit.star
 
+
+variables (t1 t2: time_space time_std_frame)
+
+#check t1.mk_time_transform_to t2
+
 /-
 
 As discussed above, a second version of this method is presented. The only difference is 
-that, rather than "_camera_time_base" being in the camera_hardware_time_acs ACS and
-"dataframe.timestamp" domain being expressed in the camera_system_time_acs ACS, 
-we have "_camera_time_base" being in the camera_global_time_acs ACS and
-"dataframe.timestamp" domain being expressed in the camera_hardware_time_acs ACS, which reflects an error
+that, rather than "_camera_time_base" being in the camera_hardware_time.coords ACS and
+"dataframe.timestamp" domain being expressed in the camera_system_time.coords ACS, 
+we have "_camera_time_base" being in the camera_global_time.coords ACS and
+"dataframe.timestamp" domain being expressed in the camera_hardware_time.coords ACS, which reflects an error
 where we have a "time dilation" discrepancy in the subtraction operation, rather than a massive origin mismatch.
 
 The reason, again, for maintaining two versions of the method is due to a limitation in our formalization, in that
@@ -513,7 +518,7 @@ as well as the _camera_time_base's type (particularly, the dependent type's ACS 
 
 void BaseRealSenseNode::imu_callback_sync(rs2::frame dataframe, imu_sync_method sync_method)
 -/
-def imu_callback_sync_v2 : timestamped camera_hardware_time_acs (displacement3d camera_imu_acs) → punit := 
+def imu_callback_sync_v2 : timestamped camera_hardware_time.coords (displacement3d camera.coords) → punit := 
   λ dataframe, 
   /- 
     double frame_time = frame.get_timestamp();
@@ -523,19 +528,21 @@ def imu_callback_sync_v2 : timestamped camera_hardware_time_acs (displacement3d 
     _ros_time_base = ros::Time::now();
     _camera_time_base = frame_time;
   -/
-  let _ros_time_base := mk_time platform_time_in_seconds August18thTwoFortyPMTimestamp in
-  let _camera_time_base := mk_time camera_global_time_acs 10 in -- 10 is an arbitrary constant
+  let _ros_time_base := mk_time platform_time_in_seconds.coords August18thTwoFortyPMTimestamp in
+  let _camera_time_base := mk_time camera_global_time.coords 10 in -- 10 is an arbitrary constant
 --double elapsed_camera_ms = (/*ms*/ frame_time - /*ms*/ _camera_time_base) / 1000.0;
-  let elapsed_camera_ms : duration camera_hardware_time_acs
-    := (camera_system_time_acs.mk_time_transform_to camera_system_time_seconds).transform_duration ((dataframe_time -ᵥ _camera_time_base : duration camera_system_time_acs)) in
+
+  let warning_this_repository_is_broken_phys_not_working := time_space.mk_time_transform_to (camera_system_time.coords : time_space _ ) (camera_system_time_seconds.coords : time_space _ ) in
+  let elapsed_camera_ms : duration camera_hardware_time.coords
+    := ((camera_system_time.coords : time_space _ ).mk_time_transform_to (camera_system_time_seconds.coords : time_space _ ) : time_transform camera_system_time.coords camera_system_time.coords).transform_duration ((dataframe_time -ᵥ _camera_time_base : duration camera_system_time.coords)) in
     /-
         auto crnt_reading = *(reinterpret_cast<const float3*>(frame.get_data()));
         Eigen::Vector3d v(crnt_reading.x, crnt_reading.y, crnt_reading.z);
     -/
-  let crnt_reading : displacement3d camera_imu_acs := dataframe.value in
-  let v : displacement3d camera_imu_acs := mk_displacement3d camera_imu_acs crnt_reading.x crnt_reading.y crnt_reading.z in
+  let crnt_reading : displacement3d camera.coords := dataframe.value in
+  let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
   --CimuData imu_data(stream_index, v, elapsed_camera_ms);
-  let imu_data : timestamped camera_hardware_time_seconds (displacement3d camera_imu_acs) := ⟨elapsed_camera_ms, v⟩ in
+  let imu_data : timestamped camera_hardware_time_seconds.coords (displacement3d camera.coords) := ⟨elapsed_camera_ms, v⟩ in
   /-
   std::deque<sensor_msgs::Imu> imu_msgs;
   switch (sync_method)
@@ -550,7 +557,7 @@ def imu_callback_sync_v2 : timestamped camera_hardware_time_acs (displacement3d 
   }
   -/
 
-  let imu_msgs : list (timestamped camera_hardware_time_seconds (displacement3d camera_imu_acs)) := [imu_data] in
+  let imu_msgs : list (timestamped camera_hardware_time_seconds.coords (displacement3d camera.coords)) := [imu_data] in
 
   /-
   
@@ -558,19 +565,19 @@ def imu_callback_sync_v2 : timestamped camera_hardware_time_acs (displacement3d 
   {
       sensor_msgs::Imu imu_msg = imu_msgs.front();
   -/
-  let imu_msg : timestamped camera_hardware_time_seconds (displacement3d camera_imu_acs) := imu_msgs.head in
+  let imu_msg : timestamped camera_hardware_time_seconds.coords (displacement3d camera.coords) := imu_msgs.head in
   --ros::Time t(_ros_time_base.toSec() + imu_msg.header.stamp.toSec());
-  let t : time camera_hardware_time_seconds :=
+  let t : time camera_hardware_time_seconds.coords :=
     mk_time _ 
     ((
-      let _ros_time_base_toSec : time platform_time_in_seconds → scalar := 
+      let _ros_time_base_toSec : time platform_time_in_seconds.coords → scalar := 
       λt, 
         (t).coord in
       _ros_time_base_toSec _ros_time_base
     )
     +
     (
-      let _imu_msg_timestamp_toSec : time camera_hardware_time_seconds → scalar := 
+      let _imu_msg_timestamp_toSec : time camera_hardware_time_seconds.coords → scalar := 
         λt, 
           t.coord in
       _imu_msg_timestamp_toSec imu_msg.timestamp
@@ -578,7 +585,7 @@ def imu_callback_sync_v2 : timestamped camera_hardware_time_acs (displacement3d 
     /-
     imu_msg.header.stamp = t;
     -/
-    let imu_msg0 : timestamped camera_hardware_time_seconds (displacement3d camera_imu_acs) := {
+    let imu_msg0 : timestamped camera_hardware_time_seconds.coords (displacement3d camera.coords) := {
       timestamp := t,
       ..imu_msg
     } in
