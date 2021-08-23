@@ -305,8 +305,6 @@ result in a smaller error - to the tune of a few hundred
 MS  (varying over time, as the dilation rates are not in
 equal in this case).
 
--- I AM NOW DOWN TO HERE. --KEVIN
-
 There are several other others that manifest in either treatment. One is that we annotate a variable suffixed "_ms"
   with a frame expressed in "milliseconds" units, whereas its actual computation is very clearly expressed in seconds. 
   We formalize this such that there is clearly a conversion 
@@ -326,6 +324,7 @@ Lastly, when adding a coordinate from a time expressed in our platform time WITH
 void BaseRealSenseNode::imu_callback_sync(rs2::frame dataframe, imu_sync_method sync_method)
 -/
 def August18thTwoFortyPMTimestamp : scalar := 1629311979
+
 def imu_callback_sync_v1 : timestamped camera_system_time.coords (displacement3d camera.coords) → punit := 
 
 /-
