@@ -424,7 +424,23 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
     -/
       let crnt_reading : displacement3d camera.coords := dataframe.value in
       let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
-
+      /-
+      private:
+        class CimuData
+        {
+            public:
+                CimuData() : m_time(-1) {};
+                CimuData(const stream_index_pair type, Eigen::Vector3d data, double time):
+                    m_type(type),
+                    m_data(data),
+                    m_time(time){};
+                bool is_set() {return m_time > 0;};
+            public:
+                stream_index_pair m_type;
+                Eigen::Vector3d m_data;
+                double          m_time;
+        };
+      -/
       --CimuData imu_data(stream_index, v, elapsed_camera_ms);
       /-
       Kevin: Here a duration (actually in seconds!) in a noisy UTC frame is being used as a point in time to serve as a timestamp for v.
