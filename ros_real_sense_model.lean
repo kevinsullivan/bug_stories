@@ -424,6 +424,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
     -/
       let crnt_reading : displacement3d camera.coords := dataframe.value in
       let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
+      
       /-
       private:
         class CimuData
@@ -441,6 +442,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
                 double          m_time;
         };
       -/
+
       --CimuData imu_data(stream_index, v, elapsed_camera_ms);
       /-
       Kevin: Here a duration (actually in seconds!) in a noisy UTC frame is being used as a point in time to serve as a timestamp for v.
@@ -548,7 +550,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
                 (t).coord in
               _ros_time_base_toSec b.ros_time_base
             )
-            +
+            +   -- KEVIN: A frame error occurs here in a sense. Need to rethink why not detected here.
             (
               --casting time to duration discussed
               --Whether or not to first convert "imu_msg.timestamp" from a time (point) to a duration (vector) should be confirmed by Dr. S
