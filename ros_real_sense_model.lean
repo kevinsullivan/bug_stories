@@ -9,7 +9,7 @@ noncomputable theory
 
 -- TODO: Should come from some library
 def milliseconds := (0.001)           -- names not clear, inverted?
-def milliseconds_to_seconds := 1000   -- names not clear, inverted?
+def milliseconds_per_second := 1000   -- names not clear, inverted?
 def seconds := 1                      -- think about this more
 
 -- TODO: Should come from resp. std libraries and be distributed to them accordingly
@@ -77,95 +77,53 @@ end utc
 
 
 /-
-We provide an intepretation for the camera's OS clock,
-referred to as "System Time" in RealSense nomenclature.
-We are presumably running our application at some "recent"
-  time, expressed in terms of UTC, so we inherit from the
-ACS "current_time_in_UTC", our global intepretation of
-"world time" - when the "application" is running, in
-terms of UTC.
-This is effectively the camera OS's interpretation of
-what it believes the current UTC time is.
-(https://intelrealsense.github.io/librealsense/doxygen/rs__frame_8h.html#a55750afe3461ea7748fbb2ef6fb19e8a)
-We will assume that the origin of the camera OS clock's
-affine coordinate system is off by some delta from the "current time in UTC's" origin,
-which, particularly, is unknowable-statically,
-so we're using the "current" origin of the  UTC as the origin Camera's time frame, plus an unspecified delta.
-Note that the RealSense API provides sensor dataframes with timestamps expressed in milliseconds - so
-our frame is thus expressed in milliseconds as well to reflect that we are consuming this API.
-(1) ORIGIN: Some unknown, small constant offset, δ₁,
-away from the origin of the current UTC time's origin,
-which reflects the current drift of the clock's origin
-(2) BASIS VECTORS
-    basis0
-      - points to the future
-      - unit length is 1 millisecond
-      - A dilation factor, ε₁, scales the basis vector,
-        to convey the speed of the clock relative to an atomic approximation of UTC time
-(3) ACS is given by [Origin, b0]
+We model the camera's OS clock, referred to as providing
+"System Time" in RealSense nomenclature.  The clock 
+nomimally reports time through the camera API in 
+milliseconds elapsed since the UTC origin. That said, 
+the clock can be off by a little in both origin and rate.
+The camera clock thus has its own affine frame, with its
+origin varying from the UTC origin by an unknown small
+amount, and the speed of its clock also varying from the 
+nominal, again probably by a small but unknown amount. We
+model these unknows as assumed scalar values, δ and ε.
+
+See the documentation for the RealSense data frame (not 
+affine frame!) class specification, here:
+https://intelrealsense.github.io/librealsense/doxygen/rs__frame_8h.html#a55750afe3461ea7748fbb2ef6fb19e8a
 -/
 
-/-
-namespace utc
-def origin := std.time 0   -- origin; first instant of January 1, 1970
-def basis := std.duration 1    -- basis; "second;" the smallest non-variable unit in UTC
-def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
-def coords := mk_space frame  -- "cosys"?
-def time (t : K) := mk_time coords t
-def duration (d : K) := mk_duration coords d
-end utc
--/
-
-/-
-namespace camera
-def origin := world.position 2 1 1
-def basis_0 := world.displacement 3 0 0
-def basis_1 := world.displacement 0 0 (-1)
-def basis_2 := world.displacement 0 2 0
-def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
-def coords : geom3d_space _ := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
-end camera
--/
-
-namespace camera_system_time_ms
-axioms (δ₁ ε₁ : scalar)       -- errors in clock offset and scaling respectively
-def origin := utc.time δ₁     -- zero point locally corresponds to δ₁ error offset from real UTC origin
-def basis := mk_duration utc.coords (milliseconds*ε₁) -- FIX? unit vector scaling error ε₁
+namespace camera_os_system_time_ms
+axioms (δ ε : scalar)
+def origin := utc.time δ     
+def basis := mk_duration utc.coords (milliseconds*ε) 
 def frame := mk_time_frame origin basis
 def coords := mk_time_space frame
-def time (t : K) := mk_time coords x
-def duration (d : K) := mk_duration coords d
-end camera_system_time_ms
+def time (t : K) := mk_time coords x 
+def duration (d : K) := mk_duration coords d 
+end camera_os_system_time_ms
 
 
 /-
 As we must convert from milliseconds (as retrieved through the rs2::Frame API) to seconds,
 we express a new ACS which simply conveys the camera_system_time.coords, defined and described
 just above, with units in seconds rather than milliseconds.
-(1) ORIGIN: The origin is unchanged from camera_system_time.coords
-(2) BASIS VECTORS
-    basis0
-      - points to the future
-      - unit length is 1 second
-      - The dilation factor is unchanged from the parent ACS
-(3) ACS is given by [Origin, b0]
 -/
-namespace camera_system_time_seconds
-def orig := mk_time camera_system_time_ms.coords 0 
-def base := mk_duration camera_system_time_ms.coords milliseconds_to_seconds -- check
+
+namespace camera_os_system_time_seconds
+def orig := mk_time camera_os_system_time_ms.coords 0 
+def base := mk_duration camera_os_system_time_ms.coords milliseconds_per_second
 def frame := mk_time_frame orig base
 def coords : time_space _ := mk_time_space frame
-def time (t : K) := mk_time coords x
-def duration (d : K) := mk_duration coords d
--- interpretations for all
-end camera_system_time_seconds
+def time (t : K) := mk_time coords x 
+def duration (d : K) := mk_duration coords d 
+end camera_os_system_time_seconds
 
 
 /-
 Next we model the frame of reference for the "hardware time" 
 of the RealSense Camera, which is meant to convey how much
+
 time has passed, stored in microseconds but exposed in milliseconds over the API, since the camera has begun
 transmitting data.
 (https://intelrealsense.github.io/librealsense/doxygen/rs__frame_8h.html#a55750afe3461ea7748fbb2ef6fb19e8a)
@@ -196,9 +154,9 @@ See also this comment from rs_frame.hpp in librealsense:
 * To query which of the three alternatives is active use `get_frame_timestamp_domain()` function call
 * \return            the timestamp of the frame, in milliseconds according to the elaborated flow
 */
-This is a zero-initiated time (it does not reflect the current time in UTC, rather, it conveys how much
-time has passed since the camera has begun transmitting data).
- 
+This is a zero-initiated time. It does not reflect the current time in UTC, rather, it conveys how much
+time has passed since the camera has begun transmitting data.
+
 We define this in terms of UTC time, giving it an origin of 0, with no intrinsic "drift". We share the same
 dilation factor as camera_system_time.coords, as we are making the assumption that both of these measurements
 share the same rate of error.
@@ -216,11 +174,13 @@ namespace camera_hardware_time_ms
 axioms (start_time ε : scalar) -- clock offset and scaling error factors; not used here (TODO)
 def origin := mk_time utc.coords start_time        -- interp:
 def basis := mk_duration utc.coords (milliseconds*ε) -- interp:  
+
 def frame := mk_time_frame origin basis
 def coords : time_space _ := mk_time_space frame
 def time (t : K) := mk_time coords t
 def duration (d: K) := mk_duration coords d
 end  camera_hardware_time_ms
+
 
 namespace camera_hardware_time_seconds
 def origin := camera_hardware_time_ms.time 0
@@ -230,10 +190,6 @@ def coords := mk_time_space frame
 def time (t : K) := mk_time coords t
 def duration (d: K) := mk_duration coords d
 end camera_hardware_time_seconds
-
-/-
-Where our nice affine space notations? Now's when we need them.
--/
 
 /-
 This is the ROS client (of the RealSense camera) node's system time,
@@ -317,6 +273,7 @@ The only difference from above is that, the error will
 result in a smaller error - to the tune of a few hundred
 MS  (varying over time, as the dilation rates are not in
 equal in this case).
+
 There are several other others that manifest in either treatment. One is that we annotate a variable suffixed "_ms"
   with a frame expressed in "milliseconds" units, whereas its actual computation is very clearly expressed in seconds.
   We formalize this such that there is clearly a conversion
@@ -385,7 +342,7 @@ def BaseRealSenseNode_v1.FillImuData_Copy (b : BaseRealSenseNode_v1)
 
 /-
 Helper method used in imu_callback_sync
--/
+
 def BaseRealSenseNode_v1.ImuMessage_AddDefaultValues (b : BaseRealSenseNode_v1) 
   : 
   timestamped camera_system_time_seconds.coords (displacement3d camera.coords) → punit := 
@@ -403,7 +360,14 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
   , although it's actual physical type manifest in the code would be an Acceleration or Angular Velocity Vector, representing
   a timestamped reading coming from a Gyroscope or Accelerometer.
   -/
+
   λ dataframe : timestamped camera_system_time_ms.coords (displacement3d camera.coords),
+  /-
+    In the original code, it represents a timestamped Acceleration 
+    or Angular Velocity vector coming from a Gyroscope or Accelerometer.
+    Kevin: A bit more work could add value here.
+  -/
+  
   /-
     double frame_time = frame.get_timestamp();
     In this line, we extract the timestamp of the dataframe, which represents the timestamp at which the IMU data was gathered.
@@ -419,6 +383,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
     data from the RealSense camera data feed. _camera_time_base is intended to represent the first time point at which the camera
     has sent an IMU data reading, expressed in terms of the clock directly on the camera.
   -/
+
   let setBaseTimeCall := b.setBaseTime (camera_hardware_time_ms.time first_send_time) in
 
   /-
@@ -652,8 +617,8 @@ def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : times
 
   λ dataframe : timestamped camera_global_time_ms.coords (displacement3d camera.coords),
 
-  let dataframe_time := dataframe.timestamp in 
 
+  let dataframe_time := dataframe.timestamp in 
   let setBaseTimeCall := b.setBaseTime (camera_system_time_ms.time first_send_time) in
   let elapsed_camera_ms : duration camera_system_time_seconds.coords  
     := ((camera_global_time_ms.coords).mk_time_transform_to camera_system_time_seconds.coords).transform_duration
