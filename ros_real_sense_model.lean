@@ -18,7 +18,7 @@ def position (x y z : K) : position3d geom3d_std_space := mk_position3d _ x y z
 def displacement (x y z : K) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
 end std
 
--- Geometric world
+-- GeometriTime c world
 namespace world  -- it's generic/parametric: for example, world -> Rice 440, as follows  
 def origin := std.position 0 0 0      -- looking in from doorway, the back lower left corner  
 def basis_0 := std.displacement 1 0 0 -- right/east along wall; unit is 1m; right 
@@ -101,6 +101,36 @@ of the RealSense Camera, which is meant to convey how much
 time has passed, in microseconds, since the camera has begun
 transmitting data.
 (https://intelrealsense.github.io/librealsense/doxygen/rs__frame_8h.html#a55750afe3461ea7748fbb2ef6fb19e8a)
+
+
+See also these descriptions on the "hardware time":
+https://github.com/IntelRealSense/librealsense/issues/4525
+"The hardware timestamps are all 32bits wide and are all zero-initiated. 
+  In order to convert the HW time to 64bit EPOCH you should probably use the global_time that was added since then."
+"These metadata attribute timestamps start from 0 (i.e. device startup time) "
+
+See also this comment from rs_frame.hpp in librealsense:
+/**
+* retrieve the time at which the frame was captured
+* During the frame's lifetime it receives timestamps both at the device and host levels.
+* The different timestamps are gathered and managed under the frame's Metadata attributes.
+* Chronologically the list of timestamps comprises of:
+* SENSOR_TIMESTAMP  - Device clock. For video sensors designates the middle of exposure. Requires metadata support.
+* FRAME_TIMESTAMP   - Device clock. Stamped at the beginning of frame readout and transfer. Requires metadata support.
+* BACKEND_TIMESTAMP - Host (EPOCH) clock in Kernel space. Frame transfer from USB Controller to the USB Driver.
+* TIME_OF_ARRIVAL   - Host (EPOCH) clock in User space. Frame transfer from the USB Driver to Librealsense.
+*
+* During runtime the SDK dynamically selects the most correct representaion, based on both device and host capabilities:
+* In case the frame metadata is not configured:
+*   -   The function call provides the TIME_OF_ARRIVAL stamp.
+* In case the metadata is available the function returns:
+*   -   `HW Timestamp` (FRAME_TIMESTAMP), or
+*   -   `Global Timestamp`  Host-corrected derivative of `HW Timestamp` required for multi-sensor/device synchronization
+*   -   The user can select between the unmodified and the host-calculated Hardware Timestamp by toggling
+*       the `RS2_OPTION_GLOBAL_TIME_ENABLED` option.
+* To query which of the three alternatives is active use `get_frame_timestamp_domain()` function call
+* \return            the timestamp of the frame, in milliseconds according to the elaborated flow
+*/
  
 We define this in terms of UTC time, giving it an origin of 0, with no intrinsic "drift". We share the same
 dilation factor as camera_system_time.coords, as we are making the assumption that both of these measurements 
