@@ -301,7 +301,7 @@ structure Publisher_v1 :=
 This method is called in imu_callback_sync, where the precisely modeled error is located
 -/
 def Publisher_v1.Publish (p : Publisher_v1) : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λ tp, 
   punit.star
 
@@ -334,8 +334,8 @@ eventually gets populated with potentially incorrect timestamps.
 -/
 def BaseRealSenseNode_v1.FillImuData_Copy (b : BaseRealSenseNode_v1) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → 
-  list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → 
+  list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) → punit := 
   λimu_data, λ imu_msgs, 
   let imu_msgs0 := imu_msgs ++ [imu_data] in 
   punit.star
@@ -346,14 +346,14 @@ Helper method used in imu_callback_sync
 
 def BaseRealSenseNode_v1.ImuMessage_AddDefaultValues (b : BaseRealSenseNode_v1) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λimu_msg, 
   punit.star
 
 
 
 -- time-stamped accelerometer reading OR gyroscope reading
-def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : timestamped camera_os_system_time_ms.coords (displacement3d camera.coords) → punit :=
+def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : timestamped camera_os_system_time_ms.coords (displacement3d imu.coords) → punit :=
 
 /-
   We define the argument to the method, dataframe. It has an interpretation of
@@ -362,7 +362,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
   a timestamped reading coming from a Gyroscope or Accelerometer.
   -/
 
-  λ dataframe : timestamped camera_os_system_time_ms.coords (displacement3d camera.coords),
+  λ dataframe : timestamped camera_os_system_time_ms.coords (displacement3d imu.coords),
   /-
     In the original code, it represents a timestamped Acceleration 
     or Angular Velocity vector coming from a Gyroscope or Accelerometer.
@@ -422,8 +422,8 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
         Next, we construct the vector v in the code. We define a variable v, which, again, has the physical type "displacement3d camera_imu.coords",
           since it is built by simply constructing a new displacement3d using the exact same x, y, and z coordinates of the prior value, crnt_reading.
     -/
-      let crnt_reading : displacement3d camera.coords := dataframe.value in
-      let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
+      let crnt_reading : displacement3d imu.coords := dataframe.value in
+      let v : displacement3d imu.coords := mk_displacement3d imu.coords crnt_reading.x crnt_reading.y crnt_reading.z in
       
       /-
       private:
@@ -457,7 +457,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
       as well as the variable "elapsed_camera_ms" as a timestamp, which, again is a duration, not a point,
       as it is the result of subtracting two time variables, and so, we see an error here in our formalization.
       -/
-      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := ⟨elapsed_camera_ms, v⟩ in
+      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := ⟨elapsed_camera_ms, v⟩ in
       /-
       std::deque<sensor_msgs::Imu> imu_msgs;
       switch (sync_method)
@@ -483,7 +483,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
         "(timestamped camera_time_seconds (displacement3d camera_imu.coords))", as opposed to a timestamped IMU message, since we are not yet able to formalize the latter.
       -/
 
-      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) := [] in
+      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) := [] in
       /-
       switch (sync_method)
       {
@@ -510,7 +510,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
       -/
       let while0 := 
         if imu_msgs.length > 0 then 
-          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := imu_msgs.head in
+          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := imu_msgs.head in
           --ros::Time t(_ros_time_base.toSec() + imu_msg.header.stamp.toSec());
           /-
           The developers now construct a new timestamp for the IMU message first by
@@ -565,7 +565,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
           There is no error at this position.
           imu_msg.header.stamp = t;
           -/
-          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := {
+          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := {
             timestamp := t,
             ..imu_msg
           } in
@@ -599,7 +599,7 @@ structure Publisher_v2 :=
   mk::
 
 def Publisher_v2.Publish (p : Publisher_v2) : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λ tp, 
   punit.star
 
@@ -622,22 +622,22 @@ def BaseRealSenseNode_v2.setBaseTime (b : BaseRealSenseNode_v2) : time camera_os
 
 def BaseRealSenseNode_v2.FillImuData_Copy (b : BaseRealSenseNode_v2) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → 
-  list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → 
+  list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) → punit := 
   λimu_data, λ imu_msgs, 
   let imu_msgs0 := imu_msgs ++ [imu_data] in 
   punit.star
 
 def BaseRealSenseNode_v2.ImuMessage_AddDefaultValues (b : BaseRealSenseNode_v2) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λimu_msg, 
   punit.star
 
 
-def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : timestamped camera_global_time_ms.coords (displacement3d camera.coords) → punit :=
+def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : timestamped camera_global_time_ms.coords (displacement3d imu.coords) → punit :=
 
-  λ dataframe : timestamped camera_global_time_ms.coords (displacement3d camera.coords),
+  λ dataframe : timestamped camera_global_time_ms.coords (displacement3d imu.coords),
 
 
   let dataframe_time := dataframe.timestamp in 
@@ -647,16 +647,16 @@ def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : times
     (((dataframe_time -ᵥ b.camera_time_base) : duration camera_global_time_ms.coords)) in
   let if0 := 
     if true then 
-      let crnt_reading : displacement3d camera.coords := dataframe.value in
-      let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
+      let crnt_reading : displacement3d imu.coords := dataframe.value in
+      let v : displacement3d imu.coords := mk_displacement3d imu.coords crnt_reading.x crnt_reading.y crnt_reading.z in
 
-      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := ⟨elapsed_camera_ms, v⟩ in
-      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) := [] in
+      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := ⟨elapsed_camera_ms, v⟩ in
+      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) := [] in
       let FillImuData_CopyCall := b.FillImuData_Copy imu_data imu_msgs in 
 
       let while0 := 
         if imu_msgs.length > 0 then 
-          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := imu_msgs.head in
+          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := imu_msgs.head in
           let t : time camera_os_system_time_seconds.coords :=
             mk_time _
             ((
@@ -672,7 +672,7 @@ def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : times
                   t.coord in
               _imu_msg_timestamp_toSec imu_msg.timestamp--imu_time_as_duration
             )) in 
-          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := {
+          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := {
             timestamp := t,
             ..imu_msg
           } in
