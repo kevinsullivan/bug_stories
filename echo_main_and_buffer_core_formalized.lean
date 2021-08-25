@@ -32,19 +32,19 @@ def seconds := 1                      -- think about this more
 
 -- TODO: Should come from resp. std libraries and be distributed to them accordingly
 namespace std
-def time (p : K) : time time_std_space := mk_time time_std_space p
-def duration (d : K) : duration time_std_space := mk_duration _ d
-def position (x y z : K) : position3d geom3d_std_space := mk_position3d _ x y z
-def displacement (x y z : K) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
+def time (p :scalar) : time time_std_space := mk_time time_std_space p
+def duration (d :scalar) : duration time_std_space := mk_duration _ d
+def position (x y z :scalar) : position3d geom3d_std_space := mk_position3d _ x y z
+def displacement (x y z :scalar) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
 end std
 
 namespace utc
 def origin := std.time 0   -- origin; first instant of January 1, 1970
 def basis := std.duration 1    -- basis; "second;" the smallest non-variable unit in UTC
 def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
-def coords := mk_space frame  -- "cosys"?
-def time (t : K) := mk_time coords t
-def duration (d : K) := mk_duration coords d
+def coords := mk_time_space frame  -- "cosys"?
+def time (t :scalar) := mk_time coords t
+def duration (d :scalar) := mk_duration coords d
 end utc
 
 /-
@@ -65,9 +65,9 @@ namespace utc_ns
 def origin := utc.time 0   -- origin; first instant of January 1, 1970
 def basis := utc.duration nanoseconds    -- basis; "second;" the smallest non-variable unit in UTC
 def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
-def coords := mk_space frame  -- "cosys"?
-def time (t : K) := mk_time coords t
-def duration (d : K) := mk_duration coords d
+def coords := mk_time_space frame  -- "cosys"?
+def time (t :scalar) := mk_time coords t
+def duration (d :scalar) := mk_duration coords d
 end utc_ns
 
 
@@ -79,8 +79,8 @@ def basis_1 := std.displacement 0 1 0 -- to door along weset wall; 1m; right
 def basis_2 := std.displacement 0 0 1 -- up along NW corner; 1m; right handed
 def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
 def coords := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
+def position (x y z :scalar) := mk_position3d coords x y z
+def displacement (x y z :scalar) := mk_displacement3d coords x y z
 end world
 
 
@@ -101,8 +101,8 @@ def basis_1 := std.displacement 0 1 0
 def basis_2 := std.displacement 0 0 1
 def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
 def coords := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
+def position (x y z :scalar) := mk_position3d coords x y z
+def displacement (x y z :scalar) := mk_displacement3d coords x y z
 end base_link  
 
 
@@ -162,6 +162,13 @@ def test : punit :=
   times.push_back(builtin_interfaces::msg::Time(1.0));
   times.push_back(builtin_interfaces::msg::Time(10.0));
   times.push_back(builtin_interfaces::msg::Time(0.0));
+
+  https://github.com/ros2/rcl_interfaces/blob/master/builtin_interfaces/msg/Time.msg
+
+  builtin_interfaces::msg::Time(10.0) treated as a time in seconds.
+
+  We define a list and populate it with several time values, assumed to be expressed in 
+  terms of UTC. Constants taken directly in terms of source code.
   -/
   let times : list (time utc.coords) := [] in
   let times0 : list (time utc.coords) := times ++ [msgTime 1] in
@@ -173,6 +180,9 @@ def test : punit :=
   durations.push_back(tf2::Duration(1.0));
   durations.push_back(tf2::Duration(0.001));
   durations.push_back(tf2::Duration(0.1));
+
+  Again, we define a list and populate it with several duration values, assumed to be expressed in UTC.
+  Constants taken directly in terms of source code. Now, however, we see that the constructor of 
   -/
   let durations : list (duration utc.coords) := (([]:_)) in
   let durations0 : list (duration utc.coords) := durations ++ [tf2Duration 1] in
@@ -195,6 +205,7 @@ Nextly, we interpret canTransform to be a function that accepts both a time expr
 def tf2TimePoint : scalar → time utc.coords := λs, inhabited.default _
 def canTransform : time utc.coords → duration utc.coords → punit := 
   λt d, punit.star
+
 /-
 We provide an interpretation for the main method of the tf2 "echo" implementation.
 When "canTransform" is called, we supply a constructed value of type tf2Duration,
@@ -221,8 +232,10 @@ echoListener.buffer_.canTransform(source_frameid, target_frameid, tf2::TimePoint
 
         auto translation = echo_transform.transform.translation;
         auto rotation = echo_transform.transform.rotation;
+
+  The call to "canTransform" fails, as the units of the second argument expect a value in utc, not in utc_ns
 -/
-  let canTransformCall := canTransform (tf2TimePoint 0) (tf2Duration 0) in
+  let canTransformCall := canTransform (tf2TimePoint 0) (tf2Duration 1.0) in
   let echo_transform := world.coords.mk_geom3d_transform_to base_link.coords in
   let translation := echo_transform.translation in 
   let rotation := echo_transform.rotation in 

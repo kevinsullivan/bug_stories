@@ -12,10 +12,10 @@ local attribute [instance] prop_decidable
 
 -- TODO: Should come from resp. std libraries and be distributed to them accordingly
 namespace std
-def time (p : K) : time time_std_space := mk_time time_std_space p
-def duration (d : K) : duration time_std_space := mk_duration _ d
-def position (x y z : K) : position3d geom3d_std_space := mk_position3d _ x y z
-def displacement (x y z : K) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
+def time (p : scalar) : time time_std_space := mk_time time_std_space p
+def duration (d : scalar) : duration time_std_space := mk_duration _ d
+def position (x y z : scalar) : position3d geom3d_std_space := mk_position3d _ x y z
+def displacement (x y z : scalar) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
 end std
 
 /-
@@ -35,8 +35,8 @@ def basis_1 := std.displacement 0 1 0 -- to door along weset wall; 1m; right
 def basis_2 := std.displacement 0 0 1 -- up along NW corner; 1m; right handed
 def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
 def coords := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
 end world
 
 
@@ -57,8 +57,8 @@ def basis_1 := std.displacement 0 1 0
 def basis_2 := std.displacement 0 0 1
 def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
 def coords := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
 end base_link  
 
 -- https://www.intelrealsense.com/how-to-getting-imu-data-from-d435i-and-t265/#Tracking_Sensor_Origin_and_CS
@@ -97,8 +97,8 @@ def origin := std.time 0   -- origin; first instant of January 1, 1970
 def basis := std.duration 1    -- basis; "second;" the smallest non-variable unit in UTC
 def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
 def coords := mk_space frame  -- "cosys"?
-def time (t : K) := mk_time coords t
-def duration (d : K) := mk_duration coords d
+def time (t : scalar) := mk_time coords t
+def duration (d : scalar) := mk_duration coords d
 end utc
 /-
 
