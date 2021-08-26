@@ -1,8 +1,8 @@
-import .phys.time.time
-import .phys.time_series.geom3d
-import .std.time_std
-import .std.geom3d_std
-import .phys.time_series.geom3d
+import ..phys.time.time
+import ..phys.time_series.geom3d
+import ..std.time_std
+import ..std.geom3d_std
+import ..phys.time_series.geom3d
 import data.real.basic
 noncomputable theory
 
@@ -96,7 +96,7 @@ namespace utc
 def origin := std.time 0   -- origin; first instant of January 1, 1970
 def basis := std.duration 1    -- basis; "second;" the smallest non-variable unit in UTC
 def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
-def coords := mk_space frame  -- "cosys"?
+def coords := mk_time_space frame  -- "cosys"?
 def time (t : scalar) := mk_time coords t
 def duration (d : scalar) := mk_duration coords d
 end utc

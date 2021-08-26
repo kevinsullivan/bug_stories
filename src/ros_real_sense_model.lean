@@ -1,9 +1,9 @@
 
 
-import .phys.time.time
-import .phys.time_series.geom3d
-import .std.time_std
-import .std.geom3d_std
+import ..phys.time.time
+import ..phys.time_series.geom3d
+import ..std.time_std
+import ..std.geom3d_std
 
 noncomputable theory
 
