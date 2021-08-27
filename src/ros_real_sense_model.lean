@@ -1,9 +1,9 @@
 
 
-import .phys.time.time
-import .phys.time_series.geom3d
-import .std.time_std
-import .std.geom3d_std
+import ..phys.time.time
+import ..phys.time_series.geom3d
+import ..std.time_std
+import ..std.geom3d_std
 
 noncomputable theory
 
@@ -14,10 +14,10 @@ def seconds := 1                      -- think about this more
 
 -- TODO: Should come from resp. std libraries and be distributed to them accordingly
 namespace std
-def time (p : K) : time time_std_space := mk_time time_std_space p
-def duration (d : K) : duration time_std_space := mk_duration _ d
-def position (x y z : K) : position3d geom3d_std_space := mk_position3d _ x y z
-def displacement (x y z : K) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
+def time (p : scalar) : time time_std_space := mk_time time_std_space p
+def duration (d : scalar) : duration time_std_space := mk_duration _ d
+def position (x y z : scalar) : position3d geom3d_std_space := mk_position3d _ x y z
+def displacement (x y z : scalar) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
 end std
 
 -- Geometric world
@@ -28,8 +28,8 @@ def basis_1 := std.displacement 0 1 0 -- to door along weset wall; 1m; right
 def basis_2 := std.displacement 0 0 1 -- up along NW corner; 1m; right handed
 def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
 def coords := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
 end world
 
 -- Camera in world
@@ -46,8 +46,8 @@ def basis_1 := world.displacement 0.71 0.54 (-0.45)
 def basis_2 := world.displacement (-0.45) 0.84 0.29
 def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
 def coords : geom3d_space _ := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
 end camera
 
 /-
@@ -62,17 +62,17 @@ def basis_1 := camera.displacement 0 0 (-1)
 def basis_2 := camera.displacement 0 1 0
 def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
 def coords : geom3d_space _ := mk_geom3d_space frame
-def position (x y z : K) := mk_position3d coords x y z
-def displacement (x y z : K) := mk_displacement3d coords x y z
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
 end imu
 
 namespace utc
 def origin := std.time 0   -- origin; first instant of January 1, 1970
 def basis := std.duration 1    -- basis; "second;" the smallest non-variable unit in UTC
 def frame := mk_time_frame origin basis -- recall why "time" is part of the constructor name? factor out?
-def coords := mk_space frame  -- "cosys"?
-def time (t : K) := mk_time coords t
-def duration (d : K) := mk_duration coords d
+def coords := mk_time_space frame  -- "cosys"?
+def time (t : scalar) := mk_time coords t
+def duration (d : scalar) := mk_duration coords d
 end utc
 
 
@@ -99,8 +99,8 @@ def origin := utc.time δ
 def basis := mk_duration utc.coords (milliseconds*ε) 
 def frame := mk_time_frame origin basis
 def coords := mk_time_space frame
-def time (t : K) := mk_time coords x 
-def duration (d : K) := mk_duration coords d 
+def time (t : scalar) := mk_time coords x 
+def duration (d : scalar) := mk_duration coords d 
 end camera_os_system_time_ms
 
 
@@ -115,8 +115,8 @@ def orig := mk_time camera_os_system_time_ms.coords 0
 def base := mk_duration camera_os_system_time_ms.coords milliseconds_per_second
 def frame := mk_time_frame orig base
 def coords : time_space _ := mk_time_space frame
-def time (t : K) := mk_time coords x 
-def duration (d : K) := mk_duration coords d 
+def time (t : scalar) := mk_time coords x 
+def duration (d : scalar) := mk_duration coords d 
 end camera_os_system_time_seconds
 
 
@@ -140,7 +140,7 @@ See also this comment from rs_frame.hpp in librealsense:
 * Chronologically the list of timestamps comprises of:
 * SENSOR_TIMESTAMP  - Device clock. For video sensors designates the middle of exposure. Requires metadata support.
 * FRAME_TIMESTAMP   - Device clock. Stamped at the beginning of frame readout and transfer. Requires metadata support.
-* BACKEND_TIMESTAMP - Host (EPOCH) clock in Kernel space. Frame transfer from USB Controller to the USB Driver.
+* BACKEND_TIMESTAMP - Host (EPOCH) clock in scalarernel space. Frame transfer from USB Controller to the USB Driver.
 * TIME_OF_ARRIVAL   - Host (EPOCH) clock in User space. Frame transfer from the USB Driver to Librealsense.
 *
 * During runtime the SDK dynamically selects the most correct representaion, based on both device and host capabilities:
@@ -177,8 +177,8 @@ def basis := mk_duration utc.coords (milliseconds*ε) -- interp:
 
 def frame := mk_time_frame origin basis
 def coords : time_space _ := mk_time_space frame
-def time (t : K) := mk_time coords t
-def duration (d: K) := mk_duration coords d
+def time (t : scalar) := mk_time coords t
+def duration (d: scalar) := mk_duration coords d
 end  camera_hardware_time_ms
 
 
@@ -187,8 +187,8 @@ def origin := camera_hardware_time_ms.time 0
 def basis := camera_hardware_time_ms.duration milliseconds_per_second
 def frame := mk_time_frame origin basis
 def coords := mk_time_space frame
-def time (t : K) := mk_time coords t
-def duration (d: K) := mk_duration coords d
+def time (t : scalar) := mk_time coords t
+def duration (d: scalar) := mk_duration coords d
 end camera_hardware_time_seconds
 
 /-
@@ -208,7 +208,7 @@ namespace ros_time_in_seconds
   def basis := mk_duration utc.coords (seconds*ε₂)  
   def frame := mk_time_frame origin basis
   def coords := mk_time_space frame
-  def time (t : K) := mk_time coords t
+  def time (t : scalar) := mk_time coords t
 end ros_time_in_seconds
 
 /-
@@ -237,8 +237,8 @@ namespace camera_global_time_ms
   def basis := mk_duration camera_hardware_time_ms.coords (ε₂/ε₁)
   def frame := mk_time_frame origin basis
   def coords := mk_time_space frame
-  def time (t : K) := mk_time coords t
-  def duration (t : K) := mk_duration coords t
+  def time (t : scalar) := mk_time coords t
+  def duration (t : scalar) := mk_duration coords t
 end camera_global_time_ms
 
 /-
@@ -301,7 +301,7 @@ structure Publisher_v1 :=
 This method is called in imu_callback_sync, where the precisely modeled error is located
 -/
 def Publisher_v1.Publish (p : Publisher_v1) : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λ tp, 
   punit.star
 
@@ -334,8 +334,8 @@ eventually gets populated with potentially incorrect timestamps.
 -/
 def BaseRealSenseNode_v1.FillImuData_Copy (b : BaseRealSenseNode_v1) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → 
-  list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → 
+  list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) → punit := 
   λimu_data, λ imu_msgs, 
   let imu_msgs0 := imu_msgs ++ [imu_data] in 
   punit.star
@@ -346,14 +346,14 @@ Helper method used in imu_callback_sync
 
 def BaseRealSenseNode_v1.ImuMessage_AddDefaultValues (b : BaseRealSenseNode_v1) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λimu_msg, 
   punit.star
 
 
 
 -- time-stamped accelerometer reading OR gyroscope reading
-def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : timestamped camera_os_system_time_ms.coords (displacement3d camera.coords) → punit :=
+def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : timestamped camera_os_system_time_ms.coords (displacement3d imu.coords) → punit :=
 
 /-
   We define the argument to the method, dataframe. It has an interpretation of
@@ -362,11 +362,11 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
   a timestamped reading coming from a Gyroscope or Accelerometer.
   -/
 
-  λ dataframe : timestamped camera_os_system_time_ms.coords (displacement3d camera.coords),
+  λ dataframe : timestamped camera_os_system_time_ms.coords (displacement3d imu.coords),
   /-
     In the original code, it represents a timestamped Acceleration 
     or Angular Velocity vector coming from a Gyroscope or Accelerometer.
-    Kevin: A bit more work could add value here.
+    scalarevin: A bit more work could add value here.
   -/
   
   /-
@@ -422,8 +422,8 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
         Next, we construct the vector v in the code. We define a variable v, which, again, has the physical type "displacement3d camera_imu.coords",
           since it is built by simply constructing a new displacement3d using the exact same x, y, and z coordinates of the prior value, crnt_reading.
     -/
-      let crnt_reading : displacement3d camera.coords := dataframe.value in
-      let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
+      let crnt_reading : displacement3d imu.coords := dataframe.value in
+      let v : displacement3d imu.coords := mk_displacement3d imu.coords crnt_reading.x crnt_reading.y crnt_reading.z in
       
       /-
       private:
@@ -445,7 +445,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
 
       --CimuData imu_data(stream_index, v, elapsed_camera_ms);
       /-
-      Kevin: Here a duration (actually in seconds!) in a noisy UTC frame is being used as a point in time to serve as a timestamp for v.
+      scalarevin: Here a duration (actually in seconds!) in a noisy UTC frame is being used as a point in time to serve as a timestamp for v.
 
       The constructor of CimuData in the next line of code simply re-packages the vector data stored in the original frame argument,
       whose physical interpretation was a timestamped displacement3d in the camera, back into an another object which represents
@@ -457,7 +457,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
       as well as the variable "elapsed_camera_ms" as a timestamp, which, again is a duration, not a point,
       as it is the result of subtracting two time variables, and so, we see an error here in our formalization.
       -/
-      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := ⟨elapsed_camera_ms, v⟩ in
+      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := ⟨elapsed_camera_ms, v⟩ in
       /-
       std::deque<sensor_msgs::Imu> imu_msgs;
       switch (sync_method)
@@ -483,7 +483,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
         "(timestamped camera_time_seconds (displacement3d camera_imu.coords))", as opposed to a timestamped IMU message, since we are not yet able to formalize the latter.
       -/
 
-      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) := [] in
+      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) := [] in
       /-
       switch (sync_method)
       {
@@ -510,7 +510,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
       -/
       let while0 := 
         if imu_msgs.length > 0 then 
-          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := imu_msgs.head in
+          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := imu_msgs.head in
           --ros::Time t(_ros_time_base.toSec() + imu_msg.header.stamp.toSec());
           /-
           The developers now construct a new timestamp for the IMU message first by
@@ -550,7 +550,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
                 (t).coord in
               _ros_time_base_toSec b.ros_time_base
             )
-            +   -- KEVIN: A frame error occurs here in a sense. Need to rethink why not detected here.
+            +   -- scalarEVIN: A frame error occurs here in a sense. Need to rethink why not detected here.
             (
               --casting time to duration discussed
               --Whether or not to first convert "imu_msg.timestamp" from a time (point) to a duration (vector) should be confirmed by Dr. S
@@ -565,7 +565,7 @@ def BaseRealSenseNode_v1.imu_callback_sync_v1 (b : BaseRealSenseNode_v1) : times
           There is no error at this position.
           imu_msg.header.stamp = t;
           -/
-          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := {
+          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := {
             timestamp := t,
             ..imu_msg
           } in
@@ -599,7 +599,7 @@ structure Publisher_v2 :=
   mk::
 
 def Publisher_v2.Publish (p : Publisher_v2) : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λ tp, 
   punit.star
 
@@ -622,22 +622,22 @@ def BaseRealSenseNode_v2.setBaseTime (b : BaseRealSenseNode_v2) : time camera_os
 
 def BaseRealSenseNode_v2.FillImuData_Copy (b : BaseRealSenseNode_v2) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → 
-  list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → 
+  list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) → punit := 
   λimu_data, λ imu_msgs, 
   let imu_msgs0 := imu_msgs ++ [imu_data] in 
   punit.star
 
 def BaseRealSenseNode_v2.ImuMessage_AddDefaultValues (b : BaseRealSenseNode_v2) 
   : 
-  timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) → punit := 
+  timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) → punit := 
   λimu_msg, 
   punit.star
 
 
-def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : timestamped camera_global_time_ms.coords (displacement3d camera.coords) → punit :=
+def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : timestamped camera_global_time_ms.coords (displacement3d imu.coords) → punit :=
 
-  λ dataframe : timestamped camera_global_time_ms.coords (displacement3d camera.coords),
+  λ dataframe : timestamped camera_global_time_ms.coords (displacement3d imu.coords),
 
 
   let dataframe_time := dataframe.timestamp in 
@@ -647,16 +647,16 @@ def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : times
     (((dataframe_time -ᵥ b.camera_time_base) : duration camera_global_time_ms.coords)) in
   let if0 := 
     if true then 
-      let crnt_reading : displacement3d camera.coords := dataframe.value in
-      let v : displacement3d camera.coords := mk_displacement3d camera.coords crnt_reading.x crnt_reading.y crnt_reading.z in
+      let crnt_reading : displacement3d imu.coords := dataframe.value in
+      let v : displacement3d imu.coords := mk_displacement3d imu.coords crnt_reading.x crnt_reading.y crnt_reading.z in
 
-      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := ⟨elapsed_camera_ms, v⟩ in
-      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords)) := [] in
+      let imu_data : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := ⟨elapsed_camera_ms, v⟩ in
+      let imu_msgs : list (timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords)) := [] in
       let FillImuData_CopyCall := b.FillImuData_Copy imu_data imu_msgs in 
 
       let while0 := 
         if imu_msgs.length > 0 then 
-          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := imu_msgs.head in
+          let imu_msg : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := imu_msgs.head in
           let t : time camera_os_system_time_seconds.coords :=
             mk_time _
             ((
@@ -672,7 +672,7 @@ def BaseRealSenseNode_v2.imu_callback_sync_v2 (b : BaseRealSenseNode_v2) : times
                   t.coord in
               _imu_msg_timestamp_toSec imu_msg.timestamp--imu_time_as_duration
             )) in 
-          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d camera.coords) := {
+          let imu_msg0 : timestamped camera_os_system_time_seconds.coords (displacement3d imu.coords) := {
             timestamp := t,
             ..imu_msg
           } in

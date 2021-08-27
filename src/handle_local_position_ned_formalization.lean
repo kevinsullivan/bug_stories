@@ -1,7 +1,7 @@
 import .phys.time.time
 import .phys.time_series.geom3d
-import .standards.time_std
-import .standards.geom3d_std
+import .std.time_std
+import .std.geom3d_std
 import .phys.time_series.geom3d
 import data.real.basic
 noncomputable theory
@@ -12,7 +12,13 @@ def seconds := 1                      -- think about this more
 def nanoseconds := (0.000000001)
 def nanoseconds_to_seconds := 1000000000
 
-
+-- TODO: Should come from resp. std libraries and be distributed to them accordingly
+namespace std
+def time (p :scalar) : time time_std_space := mk_time time_std_space p
+def duration (d :scalar) : duration time_std_space := mk_duration _ d
+def position (x y z :scalar) : position3d geom3d_std_space := mk_position3d _ x y z
+def displacement (x y z :scalar) : displacement3d geom3d_std_space := mk_displacement3d _ x y z
+end std
 /-
 We need to assume a physical interpretation of the data
 representing our coordinate system on time. 
@@ -30,11 +36,16 @@ the time since the robot was booted. We define this ACS in terms of UTC (to avoi
 (3) ACS is given by [Origin, b0]
 -/
 
-def system_boot_time_in_UTC_milliseconds : time_space _ := 
-  let origin := mk_time coordinated_universal_time_in_seconds 0 in
-  let basis := mk_duration coordinated_universal_time_in_seconds milliseconds in
-  mk_time_space (mk_time_frame origin basis)
-
+namespace system_boot_time_ms
+axiom δ : scalar
+axiom ε : scalar
+def origin := std.time δ   
+def basis := std.duration (ε*milliseconds)    
+def frame := mk_time_frame origin basis
+def coords := mk_time_space frame
+def time (t :scalar) := mk_time coords t
+def duration (d :scalar) := mk_duration coords d
+end system_boot_time_ms
 
 /-
 We also need an ACS for calls to "synchronize_stamp". These calls return actual system times in UTC,
@@ -49,12 +60,17 @@ so we shift up the coordinate to a more reasonable origin point and now define t
 (3) ACS is given by [Origin, b0]
 -/
 
-def August18thTwoFortyPMTimestamp : scalar := 1629311979
+namespace utc
+axiom δ : scalar
+axiom ε : scalar
+def origin := std.time δ   
+def basis := std.duration (ε*seconds)    
+def frame := mk_time_frame origin basis
+def coords := mk_time_space frame
+def time (t :scalar) := mk_time coords t
+def duration (d :scalar) := mk_duration coords d
+end utc
 
-def current_time_in_UTC : time_space _ := 
-  let origin := mk_time coordinated_universal_time_in_seconds 1629311979 in
-  let basis := mk_duration coordinated_universal_time_in_seconds 1 in
-  mk_time_space (mk_time_frame origin basis)
 
 /-
 Lastly, we need a system time in nanoseconds, used in calls to "synchronize stamp".
@@ -67,10 +83,16 @@ Lastly, we need a system time in nanoseconds, used in calls to "synchronize stam
       - unit length is 1 nanoseconds (as in UTC)
 (3) ACS is given by [Origin, b0]
 -/
-def current_time_in_UTC_nanoseconds : time_space _ := 
-  let origin := mk_time current_time_in_UTC 0 in
-  let basis := mk_duration current_time_in_UTC nanoseconds in
-  mk_time_space (mk_time_frame origin basis)
+
+namespace utc_ns
+def origin := utc.time 0   
+def basis := utc.duration (nanoseconds)    
+def frame := mk_time_frame origin basis
+def coords := mk_time_space frame
+def time (t :scalar) := mk_time coords t
+def duration (d :scalar) := mk_duration coords d
+end utc_ns
+
 
 /-
 We need to assume a physical interpretation of the data
@@ -80,7 +102,7 @@ for more details on the coordinate system and physical interpretation.
 
 We define a world frame. It's not fully clear if this is necessary from the codebase, 
 but we will use this world space and define several body frames in terms of it. In the name,
-we recognize that the rice420_acs implementation's origin can be interpreted as ENU. 
+we recognize that the rice420.coords implementation's origin can be interpreted as ENU. 
 
 Note also:
 https://git.scc.kit.edu/uqdpy/mavros/tree/master/mavros
@@ -90,7 +112,16 @@ of a local origin on the map frame, in ECEF, and calculate the offset to it in E
 the conversions are supported by GeographicLib classes and methods and implemented in the
 global_position plugin."
 -/
-def map_enu_acs : geom3d_space _ := rice420_acs
+namespace map_enu  -- it's generic/parametric: for example, world -> Rice 440, as follows  
+def origin := std.position 0 0 0      -- looking in from doorway, the back lower left corner  
+def basis_0 := std.displacement 1 0 0 -- right/east along wall; unit is 1m; right
+def basis_1 := std.displacement 0 1 0 -- to door along weset wall; 1m; right
+def basis_2 := std.displacement 0 0 1 -- up along NW corner; 1m; right handed
+def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
+def coords := mk_geom3d_space frame
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
+end map_enu
 
 /-
 
@@ -111,13 +142,16 @@ of a local origin on the map frame, in ECEF, and calculate the offset to it in E
 the conversions are supported by GeographicLib classes and methods and implemented in the
 global_position plugin."
 -/
-def local_origin_local_ned_acs : geom3d_space _ := 
- let origin := mk_position3d map_enu_acs 3 4 1 in
- let basis0 := mk_displacement3d map_enu_acs 1 0 0 in
- let basis1 := mk_displacement3d map_enu_acs 0 (-1) 0 in
- let basis2 := mk_displacement3d map_enu_acs 0 0 (-1) in
- let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
-  mk_geom3d_space fr
+namespace local_origin_local_ned  -- it's generic/parametric: for example, world -> Rice 440, as follows  
+def origin := map_enu.position 0 0 0      -- looking in from doorway, the back lower left corner  
+def basis_0 := map_enu.displacement 1 0 0 -- right/east along wall; unit is 1m; right
+def basis_1 := map_enu.displacement 0 1 0 -- to door along weset wall; 1m; right
+def basis_2 := map_enu.displacement 0 0 1 -- up along NW corner; 1m; right handed
+def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
+def coords := mk_geom3d_space frame
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
+end local_origin_local_ned
 
 /-
 We define a separate ACS for the local origin now oriented in terms of ENU, as necessary to integrate with ROS
@@ -131,13 +165,16 @@ Z up
 , required for such things as visualization of local positions in RVIZ.
 
 -/
-def local_origin_enu_acs : geom3d_space _ := 
- let origin := mk_position3d local_origin_local_ned_acs 0 0 0 in
- let basis0 := mk_displacement3d local_origin_local_ned_acs 1 0 0 in
- let basis1 := mk_displacement3d local_origin_local_ned_acs 0 (-1) 0 in
- let basis2 := mk_displacement3d local_origin_local_ned_acs 0 0 (-1) in
- let fr := mk_geom3d_frame origin basis0 basis1 basis2 in
-  mk_geom3d_space fr
+namespace local_origin_enu  -- it's generic/parametric: for example, world -> Rice 440, as follows  
+def origin := local_origin_local_ned.position 0 0 0      -- looking in from doorway, the back lower left corner  
+def basis_0 := local_origin_local_ned.displacement 1 0 0 -- right/east along wall; unit is 1m; right
+def basis_1 := local_origin_local_ned.displacement 0 (-1) 0 -- to door along weset wall; 1m; right
+def basis_2 := local_origin_local_ned.displacement 0 0 (-1) -- up along NW corner; 1m; right handed
+def frame := mk_geom3d_frame origin basis_0 basis_1 basis_2
+def coords := mk_geom3d_space frame
+def position (x y z : scalar) := mk_position3d coords x y z
+def displacement (x y z : scalar) := mk_displacement3d coords x y z
+end local_origin_enu
 
 
 /-
@@ -150,7 +187,7 @@ open classical
 local attribute [instance] prop_decidable
 
 structure UAS := 
-  (imu_orientation : orientation3d local_origin_enu_acs)
+  (imu_orientation : orientation3d local_origin_enu.coords)
 
 /-
 
@@ -161,7 +198,7 @@ tf::Quaternion UAS::get_attitude_orientation()
 }
 
 -/
-def UAS.get_attitude_orientation (uas : UAS) : orientation3d local_origin_enu_acs := 
+def UAS.get_attitude_orientation (uas : UAS) : orientation3d local_origin_enu.coords := 
   uas.imu_orientation
 
 /-
@@ -177,16 +214,20 @@ ros::Time UAS::synchronise_stamp(uint32_t time_boot_ms) {
 		return ros::Time::now();
 }
 -/
-axiom time_offset : scalar 
 
-def UAS.synchronise_stamp (uas : UAS) : time system_boot_time_in_UTC_milliseconds → time current_time_in_UTC := 
+#check time_std_space.mk_time_transform_to utc.coords 
+
+#check system_boot_time_ms.coords 
+
+axiom time_offset : scalar 
+def UAS.synchronise_stamp (uas : UAS) : time system_boot_time_ms.coords → time utc.coords := 
   λ time_boot_ms,
-  let offset_ns : duration current_time_in_UTC_nanoseconds := mk_duration _ time_offset in
+  let offset_ns : duration utc_ns.coords := mk_duration _ time_offset in
  
   if offset_ns > 0 then 
     let stamp_ns := 
-      (system_boot_time_in_UTC_milliseconds.mk_time_transform_to current_time_in_UTC_nanoseconds).transform_time time_boot_ms in 
-    (current_time_in_UTC_nanoseconds.mk_time_transform_to current_time_in_UTC).transform_time stamp_ns
+      (system_boot_time_ms.coords.mk_time_transform_to utc_ns.coords).transform_time time_boot_ms in 
+    (utc_ns.coords.mk_time_transform_to utc.coords).transform_time stamp_ns
   else 
     mk_time _ 0
 
@@ -200,9 +241,16 @@ def UAS.synchronise_stamp (uas : UAS) : time system_boot_time_in_UTC_millisecond
 structure Publisher :=
   mk::
 
+def Publisher.publish
+  (p : Publisher) : timestamped utc.coords (pose3d local_origin_enu.coords) → punit := 
+  λp, punit.star 
+
 structure TransformBroadcaster :=
   mk::
 
+def TransformBroadcaster.sendTransform 
+  (tb : TransformBroadcaster) : timestamped utc.coords (pose3d local_origin_enu.coords) → punit := 
+  λp, punit.star 
 
 structure LocalPositionPlugin := 
  (uas : UAS)
@@ -239,7 +287,7 @@ def poseTFToMsg {f : geom3d_frame} {sp : geom3d_space f} (p1 p2 : pose3d sp ) : 
   as such.
 -/
 def LocalPositionPlugin.handle_local_position_ned (lpp : LocalPositionPlugin) : 
-  timestamped system_boot_time_in_UTC_milliseconds (position3d local_origin_local_ned_acs) → punit := 
+  timestamped system_boot_time_ms.coords (position3d local_origin_local_ned.coords) → punit := 
   λ msg, 
   /-
   
@@ -266,13 +314,13 @@ def LocalPositionPlugin.handle_local_position_ned (lpp : LocalPositionPlugin) :
     the semantics of the call is simply that we're assigning to pos_ned from the value contained in msg - which is treated
     as a simple assignment given we're intepreting both as local_origin positions.
   -/
-  let pos_ned : timestamped system_boot_time_in_UTC_milliseconds (position3d local_origin_local_ned_acs) := inhabited.default _ in 
-  let pos_ned0 : timestamped system_boot_time_in_UTC_milliseconds (position3d local_origin_local_ned_acs) := msg in 
+  let pos_ned : timestamped system_boot_time_ms.coords (position3d local_origin_local_ned.coords) := inhabited.default _ in 
+  let pos_ned0 : timestamped system_boot_time_ms.coords (position3d local_origin_local_ned.coords) := msg in 
   /-
   tf::Transform transform;
 		transform.setOrigin(tf::Vector3(pos_ned.y, pos_ned.x, -pos_ned.z));
 		transform.setRotation(uas->get_attitude_orientation());-/
-  let transform : pose3d local_origin_enu_acs := inhabited.default _ in 
+  let transform : pose3d local_origin_enu.coords := inhabited.default _ in 
   let setOriginCall := transform.setOrigin (mk_position3d _ (pos_ned.value.y) (pos_ned.value.x) (-pos_ned.value.z)) in
   let setRotationCall := transform.setRotation lpp.uas.get_attitude_orientation in
   /-
@@ -280,18 +328,20 @@ def LocalPositionPlugin.handle_local_position_ned (lpp : LocalPositionPlugin) :
 
 	tf::poseTFToMsg(transform, pose->pose);
   -/
-  let pose : timestamped current_time_in_UTC (pose3d local_origin_enu_acs) := inhabited.default _ in 
+  let pose : timestamped utc.coords (pose3d local_origin_enu.coords) := inhabited.default _ in 
   let poseTFToMsgCall := poseTFToMsg transform pose.value in
-  let pose0 : timestamped current_time_in_UTC (pose3d local_origin_enu_acs) := {
+  let pose0 : timestamped utc.coords (pose3d local_origin_enu.coords) := {
     timestamp := lpp.uas.synchronise_stamp pos_ned.timestamp,
     ..pose
   } in 
 
-  let if0 :=
+  let if0 : punit :=
     if true then 
-
+      punit.star
     else 
-
+      punit.star in 
+  
+  let publishCall := lpp.local_position.publish pose in 
   /-
   pose->header.frame_id = frame_id;
 		pose->header.stamp = uas->synchronise_stamp(pos_ned.time_boot_ms);
